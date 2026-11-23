@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thanksgiving Game Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>:root{
+  /* Layout: yellow header band, light content sheet with rounded top corners, fixed orange bottom nav (Mastermind), orange slide-in menu */
+  --yellow:#F5CB58; --yellow2:#F3E9B5; --orange:#E95322; --orange2:#FFDECF;
+  --orange-ink:#B23C12; --ink:#391713; --ink2:#252525; --cream:#F8F8F8; --white:#FFFFFF;
+  --bg:#F5F5F5; --muted:#76615C; --line:#EADFD8;
+  --good:#2C7A4B; --good-soft:#E1F1E6; --warn:#9A5800; --warn-soft:#FCEBC6; --crit:#C02D19; --crit-soft:#FDE0D8;
+  --font:"League Spartan","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --r:20px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--yellow);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.4;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--font);line-height:1.1;text-wrap:balance;margin:0;color:var(--ink)}
+h2{font-size:1.25rem;font-weight:500}
+h3{font-size:1.02rem;font-weight:600}
+.tnum,.time{font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px;border-radius:8px}
+svg{flex:0 0 auto}
+
+/* Header band */
+.top{background:var(--yellow)}
+.bar{max-width:1100px;margin:0 auto;padding:10px 16px 40px;display:flex;justify-content:flex-end;align-items:center;gap:10px}
+.brand{display:grid;gap:4px;min-width:0}
+.app-name{font-size:.85rem;font-weight:600;color:var(--ink);opacity:.8;letter-spacing:.02em}
+.view-t{font-size:2rem;font-weight:700;color:var(--white);line-height:1;text-shadow:0 1px 0 rgba(57,23,19,.12)}
+.nowpill{display:inline-flex;align-items:center;gap:6px;font-size:.92rem;font-weight:600;color:var(--orange-ink)}
+.nowpill svg{width:16px;height:16px}
+.iconbtn{width:42px;height:42px;border-radius:14px;border:0;background:var(--cream);color:var(--orange);display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 0 rgba(57,23,19,.08)}
+.iconbtn svg{width:24px;height:24px}
+
+/* Content sheet */
+.sheet-main{background:var(--bg);border-radius:30px 30px 0 0;margin-top:-30px;min-height:calc(100dvh - 120px);padding-bottom:110px;position:relative}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px;display:grid;gap:16px}
+@media (min-width:900px){ .wrap.split{grid-template-columns:minmax(0,1fr) 360px;align-items:start} }
+.rail,.col{display:grid;gap:16px;min-width:0}
+.card{background:var(--white);border-radius:var(--r);padding:18px;display:grid;gap:12px;min-width:0;box-shadow:0 1px 2px rgba(57,23,19,.05)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sub{color:var(--muted);font-size:.9rem;font-weight:400}
+.empty{color:var(--muted);font-size:.95rem;margin:0}
+.banner{max-width:1100px;margin:0 auto;padding:16px 16px 0}
+.banner div{border-radius:14px;padding:10px 14px;font-size:.92rem;background:var(--orange2);color:var(--ink)}
+
+/* Buttons */
+.btn{border:0;background:var(--orange2);color:var(--orange-ink);border-radius:999px;padding:9px 18px;min-height:42px;cursor:pointer;font-weight:600;font-size:.95rem;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{filter:brightness(.97)}
+.btn.primary,.btn.heat{background:var(--orange);color:var(--white);font-weight:600;font-size:1.02rem}
+.btn.ghost{background:transparent;color:var(--orange-ink)}
+.btn.small{min-height:36px;padding:6px 14px;font-size:.88rem}
+.btn.primary.small,.btn.heat.small{font-size:.92rem}
+.btn.link{background:none;padding:2px 0;min-height:0;color:var(--orange-ink);font-weight:600}
+.btn.big{min-height:52px;font-size:1.3rem;font-weight:500;padding:10px 40px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Hero banner */
+.hero{background:var(--orange);color:var(--white);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border:16px solid var(--yellow);border-radius:50%;opacity:.9}
+.hero h2,.hero .eta,.hero .eta-label{color:var(--white)}
+.hero-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;position:relative;z-index:1}
+.eta-label{font-size:1rem;font-weight:400}
+.eta{font-weight:700;font-size:2.8rem;line-height:1;letter-spacing:-.01em}
+.hero .prog{background:rgba(255,255,255,.3)}
+.hero .prog i{background:var(--yellow)}
+.hero .prog-row{color:var(--cream)}
+.hero .pill.good{background:var(--white);color:var(--good)}
+.hero .pill.warn{background:var(--yellow);color:var(--ink)}
+.hero .pill.crit{background:var(--white);color:var(--crit)}
+.hero .mini{background:rgba(255,255,255,.16)}
+.hero .mini span,.hero .mini b{color:var(--white)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;font-size:.85rem;font-weight:600;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.heat{background:var(--orange2);color:var(--orange-ink)}
+.pill.neutral{background:var(--yellow2);color:var(--ink)}
+.prog{height:10px;border-radius:999px;background:var(--yellow2);overflow:hidden;position:relative;z-index:1}
+.prog i{display:block;height:100%;background:var(--orange);border-radius:999px;transition:width .4s}
+.prog.thin{height:6px;margin:4px 0}
+.prog-row{display:flex;justify-content:space-between;font-size:.92rem;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
+.daysplit{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative;z-index:1}
+.mini{border-radius:14px;padding:10px 12px}
+.mini b{display:block;font-size:1.2rem;font-weight:700}
+.mini span{font-size:.85rem}
+.mini .prog{height:6px;margin-top:6px}
+
+/* Alerts */
+.alerts{display:grid;gap:8px}
+.alert{display:flex;gap:10px;align-items:center;border-radius:14px;padding:10px 12px;font-size:.95rem}
+.alert.crit{background:var(--crit-soft)}
+.alert.warn{background:var(--warn-soft)}
+.alert.info{background:var(--yellow2)}
+.alert p{margin:0;flex:1}
+.alert.crit p::before,.alert.warn p::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle;background:var(--warn)}
+.alert.crit p::before{background:var(--crit)}
+.newtag{background:var(--crit);color:#fff;border-radius:6px;padding:1px 6px;font-size:.72rem;margin-right:4px;font-weight:600}
+
+/* Oven */
+.slots{display:grid;gap:8px}
+.slot{border:2px dashed var(--line);border-radius:14px;min-height:56px;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;font-size:.88rem;color:var(--muted)}
+.slot.full{border:0;background:var(--orange2);color:var(--ink)}
+.slot.over{background:var(--crit-soft)}
+.slot b{font-size:.95rem;font-weight:600}
+.ovenitem{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:12px}
+.timer{font-weight:700;font-size:1.4rem;color:var(--orange-ink);font-variant-numeric:tabular-nums}
+.meter{height:8px;border-radius:999px;background:var(--yellow2);position:relative;overflow:hidden}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--orange)}
+.meter i.over{background:var(--crit)}
+
+/* Steps */
+.tasks{display:grid}
+.group-h{font-size:1.05rem;font-weight:500;color:var(--orange-ink);padding:14px 0 4px}
+.task{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.task:first-child{border-top:0}
+.task.nocheck{grid-template-columns:minmax(0,1fr)}
+.check{width:40px;height:40px;border-radius:12px;border:2px solid var(--orange);background:var(--white);color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
+.check svg{width:22px;height:22px;opacity:0}
+.check[aria-pressed="true"]{background:var(--orange)}
+.check[aria-pressed="true"] svg{opacity:1}
+.check.inoven{background:var(--orange2);color:var(--orange)}
+.check.inoven svg{opacity:1}
+.tmain{display:grid;gap:6px;min-width:0}
+.trow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tmeta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
+.time{font-weight:700;color:var(--orange-ink)}
+.ttitle{font-weight:500;font-size:1.08rem;line-height:1.25}
+.task.done .ttitle{color:var(--muted);text-decoration:line-through}
+.task.done .time{color:var(--muted)}
+.chip{border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:600;background:var(--yellow2);color:var(--ink)}
+.chip.helper{background:var(--orange2);color:var(--orange-ink)}
+.chip.ovenchip{background:var(--orange);color:var(--white)}
+.chip.late{background:var(--warn-soft);color:var(--warn)}
+.plus{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:0;background:var(--yellow2);color:var(--orange);font-size:1.4rem;font-weight:600;line-height:1;cursor:pointer;display:grid;place-items:center}
+.plus[aria-expanded="true"]{background:var(--orange);color:var(--white)}
+.detail{display:grid;gap:8px;font-size:.95rem;background:var(--bg);border-radius:14px;padding:12px 14px}
+.detail ol{margin:0;padding-left:20px;display:grid;gap:4px}
+.uses{font-size:.85rem;color:var(--muted)}
+.note{background:var(--orange2);padding:10px 12px;border-radius:14px;font-size:.92rem}
+.note ul{margin:0;padding-left:18px;display:grid;gap:4px}
+
+.seg{display:inline-flex;background:var(--yellow2);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:7px 14px;min-height:36px;cursor:pointer;font-weight:600;font-size:.9rem;border-radius:999px;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--orange);color:var(--white)}
+
+/* People */
+.hlist{display:grid;gap:12px}
+.hrow{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:start}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;font-size:1.1rem}
+.hrow p{margin:2px 0 0;font-size:.9rem;color:var(--muted)}
+
+/* Recipes */
+.subtabs{display:flex;gap:14px;overflow-x:auto;padding:20px 16px 4px;max-width:1100px;margin:0 auto;scrollbar-width:none}
+.subtabs::-webkit-scrollbar{display:none}
+.subtab{flex:0 0 auto;border:0;background:none;cursor:pointer;display:grid;justify-items:center;gap:6px;padding:0;width:68px}
+.subtab .tile{width:52px;height:64px;border-radius:30px;background:var(--yellow2);color:var(--orange);display:grid;place-items:center;font-weight:700;font-size:1.35rem}
+.subtab .lbl{font-size:.82rem;font-weight:500;color:var(--ink);text-align:center;line-height:1.1}
+.subtab[aria-current="page"] .tile{background:var(--orange);color:var(--white)}
+.subtab[aria-current="page"] .lbl{font-weight:700}
+.rhead h1{font-size:1.7rem;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.ing{display:grid;gap:14px}
+.ing ul{margin:6px 0 0;padding-left:20px;display:grid;gap:4px}
+.steps{margin:0;padding-left:22px;display:grid;gap:12px}
+.steps b{display:block;font-weight:600}
+.rgrid{display:grid;gap:16px}
+@media (min-width:900px){.rgrid{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);align-items:start}}
+
+/* Helper jobs */
+.hello h1{font-size:1.7rem;font-weight:600}
+.joblist{display:grid;gap:12px}
+.job{border-radius:18px;padding:14px;display:grid;gap:8px;background:var(--white);border:2px solid var(--yellow2)}
+.job.mine{border-color:var(--orange)}
+.job.done{opacity:.75}
+.job h3{font-size:1.12rem;font-weight:600}
+.job ol{margin:0;padding-left:20px;display:grid;gap:5px}
+.needby{display:flex;align-items:center;gap:8px;border-radius:14px;padding:9px 12px;background:var(--yellow2);color:var(--ink);font-size:.95rem}
+.needby svg{width:20px;height:20px;color:var(--orange)}
+.needby b{font-size:1.08rem;font-weight:700}
+.needby.soon{background:var(--yellow);color:var(--ink)}
+.needby.late{background:var(--orange);color:var(--white)}
+.needby.late svg{color:var(--white)}
+.needby.ok{background:var(--good-soft);color:var(--good)}
+
+/* Landing */
+.band{background:var(--yellow);padding:36px 20px 64px;text-align:center;display:grid;gap:8px;justify-items:center}
+.band-t{font-size:2.2rem;font-weight:700;color:var(--white)}
+.land{max-width:520px;margin:0 auto;padding:28px 24px;display:grid;gap:18px}
+.land h2{font-size:1.6rem;font-weight:600}
+.land-form{display:grid;gap:18px}
+.roles{border:0;margin:0;padding:0;display:grid;gap:10px}
+.roles legend{margin-bottom:8px;font-size:1.15rem;font-weight:500}
+.role{display:grid;gap:2px;border-radius:16px;padding:14px 16px 14px 48px;cursor:pointer;position:relative;background:var(--yellow2);border:2px solid transparent}
+.role input{position:absolute;left:16px;top:17px;width:20px;height:20px;accent-color:var(--orange)}
+.role b{font-size:1.1rem;font-weight:600}
+.role span{font-size:.92rem;color:var(--muted)}
+.role.on{border-color:var(--orange);background:var(--orange2)}
+.land .submit-row{display:flex;justify-content:center;padding-top:8px}
+
+/* Forms */
+.field{display:grid;gap:6px;font-weight:500;font-size:1rem;min-width:0;color:var(--ink)}
+.field input,.field select,.field textarea{font:inherit;font-weight:400;font-size:1.02rem;padding:10px 14px;border-radius:13px;border:0;background:var(--yellow2);color:var(--ink);min-height:46px;width:100%}
+.field textarea{resize:vertical;line-height:1.4}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--orange);outline-offset:0}
+.check-field{display:flex;align-items:center;gap:10px}
+.check-field input{width:22px;height:22px;min-height:0;accent-color:var(--orange)}
+.formerr{color:var(--crit);margin:0;min-height:1.2em;font-size:.92rem}
+.q-label{font-weight:500}
+
+/* Bottom navigation */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;pointer-events:none}
+.bnav-in{pointer-events:auto;width:min(560px,100%);background:var(--orange);border-radius:30px 30px 0 0;display:grid;grid-template-columns:repeat(3,1fr);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+.bnav button{border:0;background:none;color:var(--cream);display:grid;justify-items:center;gap:3px;padding:6px 0;cursor:pointer;font-size:.82rem;font-weight:500;border-radius:16px}
+.bnav button svg{width:26px;height:26px}
+.bnav button[aria-current="page"]{background:var(--cream);color:var(--orange-ink)}
+
+/* Slide-in menu */
+.scrim{position:fixed;inset:0;background:rgba(57,23,19,.35);display:grid;place-items:end center;z-index:50;padding:16px}
+@media (min-width:600px){.scrim{place-items:center}}
+.dialog{background:var(--white);color:var(--ink);border-radius:24px;padding:22px;width:min(440px,100%);display:grid;gap:14px}
+.dialog h2{font-size:1.4rem;font-weight:600}
+.scrim.drawer{place-items:stretch end;padding:0}
+.drawer-panel{background:var(--orange);color:var(--cream);width:min(340px,88vw);height:100%;border-radius:40px 0 0 40px;padding:36px 24px 28px;display:flex;flex-direction:column;gap:24px;overflow-y:auto;box-shadow:-8px 0 30px rgba(57,23,19,.25)}
+.drawer-me{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center}
+.drawer-me .avatar{width:56px;height:56px;background:var(--cream);color:var(--orange);font-size:1.5rem}
+.drawer-me b{display:block;font-size:1.5rem;font-weight:600;color:var(--white);line-height:1.1}
+.drawer-me span{font-size:.95rem;color:var(--cream)}
+.drawer-close{width:38px;height:38px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:var(--white);cursor:pointer;font-size:1.3rem;display:grid;place-items:center}
+.menu{display:grid}
+.menu-item{display:grid;grid-template-columns:48px 1fr;gap:16px;align-items:center;text-align:left;border:0;border-bottom:1px solid rgba(248,248,248,.6);background:none;color:var(--cream);padding:12px 0;cursor:pointer;min-height:64px}
+.menu-item:last-child{border-bottom:0}
+.menu-item .mi-ico{width:48px;height:48px;border-radius:14px;background:var(--cream);color:var(--orange);display:grid;place-items:center}
+.menu-item .mi-ico svg{width:26px;height:26px}
+.menu-item b{display:block;font-size:1.2rem;font-weight:600;color:var(--white)}
+.menu-item span{font-size:.85rem;color:var(--cream);opacity:.92}
+.menu-foot{margin-top:auto}
+.menu-foot .menu-item{border:0}
+.menu-foot .mi-ico{background:transparent;color:var(--cream);border:2px solid var(--cream)}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:10px 18px;border-radius:999px;z-index:60;font-size:.95rem;max-width:90vw}
+
+/* Editors */
+.ed-h{font-size:1.5rem;font-weight:600}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid .wide{grid-column:1/-1}
+@media (max-width:520px){.fgrid{grid-template-columns:1fr}}
+.group{border-top:1px solid var(--line);padding-top:12px}
+.tools{border:0;background:var(--bg);border-radius:14px;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tools legend{font-weight:500;padding:0 4px;float:left;width:100%;margin-bottom:4px}
+.toolq{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.92rem}
+.toolq input{width:64px;min-height:38px;padding:6px 8px;font:inherit;border-radius:10px;border:0;background:var(--yellow2);color:var(--ink)}
+.tforms{display:grid;gap:10px}
+.tform{border-radius:16px;padding:12px 14px;display:grid;gap:12px;background:var(--bg)}
+.tform.open{background:var(--white);outline:2px solid var(--orange)}
+.toolrows{display:grid;gap:10px}
+.toolrow{display:grid;grid-template-columns:2fr 1fr auto auto;gap:10px;align-items:end;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:520px){.toolrow{grid-template-columns:1fr 90px}}
+.rlist{display:grid}
+.ritem{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;border-top:1px solid var(--line);padding:12px 0}
+.ritem .tile{width:44px;height:44px;border-radius:14px;background:var(--yellow2);color:var(--orange);display:grid;place-items:center;font-weight:700}
+.dot{width:12px;height:12px;border-radius:50%;background:hsl(var(--h) 55% 45%)}
+.impact{display:grid;gap:12px}
+.impact h3{margin-bottom:6px}
+.moved{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.92rem}
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:35;display:flex;justify-content:center}
+.has-nav .savebar{bottom:78px}
+.savebar-in{width:min(1100px,100%);margin:0 12px 8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600;font-size:.95rem;background:var(--ink);color:var(--white);border-radius:20px;box-shadow:0 8px 24px rgba(57,23,19,.25)}
+.savebar .btn.ghost{color:var(--yellow)}
+.editor{padding-bottom:90px}
+
+/* Timeline */
+.timeline{position:relative;display:grid;grid-template-columns:60px minmax(740px,1fr);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.hours{position:relative;margin-top:30px}
+.hr{position:absolute;left:0;right:0;font-size:.78rem;color:var(--muted);transform:translateY(-.6em)}
+.lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lane-h{height:30px;font-size:.88rem;font-weight:600;color:var(--orange-ink);display:flex;align-items:center}
+.lane-body{position:relative;background:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent 120px),var(--bg);border-radius:14px}
+.blk{position:absolute;border-radius:12px;background:hsl(var(--h) 70% 93%);border-left:5px solid hsl(var(--h) 60% 42%);display:flex;flex-direction:column;overflow:hidden;color:var(--ink);box-shadow:0 1px 2px rgba(57,23,19,.12)}
+.blk.bad{outline:3px solid var(--crit);outline-offset:-1px}
+.blk.dragging{box-shadow:0 10px 24px rgba(57,23,19,.3);z-index:5}
+.grip{flex:0 0 18px;border:0;background:hsl(var(--h) 55% 84%);cursor:grab;touch-action:none;font-size:.7rem;letter-spacing:2px;color:var(--ink);padding:0;line-height:18px}
+.grip:active{cursor:grabbing}
+.blk-body{flex:1;border:0;background:none;text-align:left;padding:2px 8px 4px;cursor:pointer;display:flex;flex-direction:column;gap:1px;min-width:0;color:inherit;font:inherit}
+.blk-time{font-size:.74rem;font-weight:700;color:var(--orange-ink)}
+.blk-t{font-size:.8rem;line-height:1.15;overflow:hidden}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ---- v4: view-instructions link, dashboard timeline ---- */
+.vi{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:4px 0;cursor:pointer;color:var(--orange-ink);font-weight:600;font-size:.92rem;justify-self:start;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.vi-ic{width:20px;height:20px;border-radius:50%;background:var(--orange);color:var(--white);display:grid;place-items:center;font-size:.95rem;line-height:1;text-decoration:none;font-weight:700}
+.vi[aria-expanded="true"] .vi-ic{background:var(--ink)}
+.seg button{display:inline-flex;align-items:center;gap:6px}
+.seg button svg{width:18px;height:18px}
+.lanes.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.dash-tl{grid-template-columns:60px minmax(1040px,1fr)}
+.tblk{position:absolute;border-radius:14px;background:var(--white);border:2px solid var(--yellow2);padding:8px 10px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 3px rgba(57,23,19,.08)}
+.tblk.done{background:var(--bg);border-color:var(--line)}
+.tblk.done .tblk-t{text-decoration:line-through;color:var(--muted)}
+.tblk.inoven{border-color:var(--orange);background:var(--orange2)}
+.tblk.late{border-color:var(--warn)}
+.tblk-top{display:flex;align-items:center;gap:8px}
+.tblk-t{font-weight:600;font-size:.98rem;line-height:1.2}
+.tblk .tmeta{gap:4px}
+.tblk .chip{font-size:.72rem;padding:2px 8px}
+.tblk .vi{font-size:.84rem;padding:0}
+.tblk .vi-ic{width:18px;height:18px}
+.check.sm{width:28px;height:28px;border-radius:9px}
+.check.sm svg{width:16px;height:16px}
+.nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--crit);z-index:4;pointer-events:none}
+.nowline span{position:absolute;left:0;top:-11px;background:var(--crit);color:var(--white);font-size:.72rem;font-weight:700;padding:2px 6px;border-radius:999px}
+.blk-t{overflow:visible;word-break:break-word}
+.blk{overflow:visible}
+
+/* ---- v5: centered link icon, single-column color-coded timeline ---- */
+.vi-ic{width:20px;height:20px;border-radius:50%;background:var(--orange);color:var(--white);display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;padding:0;line-height:0}
+.vi-ic svg{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.85rem;color:var(--ink)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.agenda{list-style:none;margin:0;padding:0 0 0 26px;position:relative;display:grid;gap:10px}
+.agenda::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line);border-radius:2px}
+.ag-hour{position:relative;font-weight:600;font-size:.95rem;color:var(--orange-ink);padding-top:6px}
+.ag-hour::before{content:"";position:absolute;left:-23px;top:11px;width:12px;height:2px;background:var(--line)}
+.ag-item{position:relative}
+.ag-dot{position:absolute;left:-24px;top:16px;width:14px;height:14px;border-radius:50%;background:var(--tc);border:3px solid var(--bg);box-sizing:content-box;transform:translateX(-3px)}
+.ag-card{background:var(--white);border:1px solid var(--line);border-left:6px solid var(--tc);border-radius:14px;padding:10px 12px;display:grid;gap:6px}
+.ag-item.done .ag-card{background:var(--bg)}
+.ag-item.done .ag-t{text-decoration:line-through;color:var(--muted)}
+.ag-item.inoven .ag-card{background:var(--orange2)}
+.ag-top{display:flex;align-items:center;gap:10px}
+.ag-t{font-weight:600;font-size:1.05rem;line-height:1.25}
+.chip.type{background:color-mix(in srgb, var(--tc) 16%, white);color:var(--ink)}
+.chip.type::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tc);margin-right:5px;vertical-align:1px}
+.ag-now{position:relative;height:0;border-top:2px solid var(--crit);margin:10px 0 12px -26px}
+.ag-now span{position:absolute;left:0;top:-12px;background:var(--crit);color:var(--white);font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:999px}
+
+/* ---- v6: landing dishes, add dish, oven-first editor, Gantt timeline ---- */
+.dishpick{display:grid;gap:8px;padding:2px 0 6px 0}
+.dish{display:grid;grid-template-columns:22px 40px 1fr;gap:10px;align-items:center;background:var(--white);border:2px solid var(--yellow2);border-radius:14px;padding:8px 12px;cursor:pointer}
+.dish input{width:20px;height:20px;accent-color:var(--orange)}
+.dish .tile{width:40px;height:40px;border-radius:12px;background:var(--yellow2);color:var(--orange);display:grid;place-items:center;font-weight:700}
+.dish b{display:block;font-weight:600}
+.dish.on{border-color:var(--orange);background:var(--orange2)}
+.dish.taken{opacity:.6;cursor:not-allowed}
+.dish.add .tile{background:var(--orange);color:var(--white);font-size:1.3rem}
+.seg.small button{padding:5px 12px;min-height:32px;font-size:.84rem}
+.thinking{display:flex;align-items:center;gap:10px;background:var(--yellow2);border-radius:14px;padding:10px 14px;font-weight:500}
+.spinner{width:20px;height:20px;border-radius:50%;border:3px solid var(--orange2);border-top-color:var(--orange);animation:spin 1s linear infinite;flex:0 0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+.add-card textarea{min-height:220px}
+.note-card{background:var(--orange2)}
+.review-q{border:2px solid var(--yellow)}
+.ovenfacts{display:flex;flex-wrap:wrap;gap:10px}
+.ovenfact{background:var(--orange);color:var(--white);border-radius:16px;padding:10px 14px;display:grid;gap:2px;min-width:140px}
+.ovenfact b{font-size:1.6rem;font-weight:700;line-height:1}
+.ovenfact .sub{color:var(--cream)}
+.oven-card{border:2px solid var(--orange)}
+.oven-card h2{display:flex;align-items:center;gap:8px}
+.h-ico{width:24px;height:24px;color:var(--orange)}
+.ovenedit{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.ovenedit:first-of-type{border-top:0;padding-top:0}
+.ovengrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:700px){.ovengrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.big-num{grid-column:span 1}
+.unit-in{display:flex;align-items:center;gap:6px;background:var(--orange2);border-radius:13px;padding:4px 10px}
+.unit-in input{background:transparent!important;font-size:1.5rem!important;font-weight:700!important;color:var(--orange-ink)!important;padding:4px 0!important;min-height:44px;width:100%;min-width:0}
+.unit-in i{font-style:normal;font-weight:600;color:var(--muted)}
+.advanced summary{display:flex;align-items:baseline;gap:12px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.advanced summary::-webkit-details-marker{display:none}
+.advanced summary h2::before{content:"+ ";color:var(--orange)}
+.advanced[open] summary h2::before{content:"− "}
+.advanced[open] summary{margin-bottom:12px}
+/* Gantt */
+.g-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.g-stats div{background:var(--bg);border-radius:12px;padding:8px 10px;display:grid;gap:2px}
+.g-stats b{font-size:1rem;font-weight:700;color:var(--ink)}
+.g-stats span{font-size:.75rem;color:var(--muted);line-height:1.2}
+.gantt{position:relative}
+.g-axis{position:relative;height:22px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.g-tick{position:absolute;bottom:4px;transform:translateX(-50%);font-size:.74rem;font-weight:600;color:var(--muted);white-space:nowrap}
+.g-tick:first-child{transform:none}
+.g-body{position:relative}
+.g-gridlines{position:absolute;inset:0;pointer-events:none;z-index:0}
+.g-grid{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--line)}
+.g-now{position:absolute;top:-28px;bottom:0;width:0;border-left:2px solid var(--crit);z-index:3}
+.g-now b{position:absolute;top:0;left:50%;transform:translateX(-50%);background:var(--crit);color:var(--white);font-size:.68rem;padding:1px 6px;border-radius:999px;white-space:nowrap}
+.g-dinner{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--ink);z-index:2}
+.g-dinner b{position:absolute;bottom:-2px;right:4px;font-size:.7rem;background:var(--ink);color:var(--white);padding:1px 6px;border-radius:999px;white-space:nowrap}
+.g-oven{position:relative;z-index:1;padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.g-olabel{display:block;font-size:.78rem;font-weight:700;color:var(--orange-ink);margin-bottom:4px}
+.g-otrack{position:relative}
+.g-obar{position:absolute;height:13px;border-radius:5px;background:var(--orange);color:var(--white);font-size:.62rem;font-weight:700;line-height:13px;text-align:center;overflow:hidden;white-space:nowrap}
+.g-obar.done{opacity:.45}
+.g-obar.live{box-shadow:0 0 0 2px var(--yellow)}
+.g-rows{list-style:none;margin:0;padding:0;position:relative;z-index:1}
+.g-row{padding:6px 0 8px;border-bottom:1px solid var(--line)}
+.g-row:last-child{border-bottom:0}
+.g-head{display:flex;align-items:center;gap:8px}
+.g-txt{flex:1;min-width:0;display:grid}
+.g-title{font-weight:600;font-size:.95rem;line-height:1.2}
+.g-meta{font-size:.78rem;color:var(--muted);line-height:1.25}
+.g-vi{font-size:.8rem;flex:0 0 auto}
+.g-vi .vi-ic{width:18px;height:18px;flex-basis:18px}
+.g-track{position:relative;height:12px;margin-top:5px;background:transparent}
+.g-bar{position:absolute;top:0;height:12px;border-radius:6px;background:color-mix(in srgb, var(--tc) 30%, white);border:2px solid var(--tc);box-sizing:border-box}
+.g-row.done .g-bar{background:var(--tc)}
+.g-row.done .g-title{text-decoration:line-through;color:var(--muted)}
+.g-row.live .g-bar{background:repeating-linear-gradient(45deg,var(--tc) 0 4px,var(--orange2) 4px 8px)}
+.g-row.late .g-bar{outline:2px dashed var(--warn);outline-offset:1px}
+
+.ovengrid .bake{grid-column:span 2}
+.unit-in input{flex:1 1 0}
+.bake .unit-in input{max-width:5ch}
+
+.import-steps li span{display:block;color:var(--muted);font-size:.92rem}
+.import-steps .btns{margin-top:6px}
+.import-steps .field{margin-top:6px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ============ DEFAULT PLAN ============ */
+const FOIL = [
+  "Foil pan lids usually aren't steam-tight, so crimp a layer of foil over the pan before putting the lid on.",
+  "Set the pan on a sheet pan whenever it goes in or out of the oven. Flimsy foil full of hot liquid is risky to carry. You can reheat it in the same pan Thursday."
+];
+const S2 = (h,x) => ({h, x});
+const DEFAULT_PLAN = {
+  v: 2,
+  dinner: '17:00',
+  kitchen: {
+    ovenSpots: 4,
+    tools: [
+      {id:'burnerGood', name:'Big burner', count:2},
+      {id:'burnerTiny', name:'Small burner', count:2},
+      {id:'bigPot', name:'Large stock pot', count:1},
+      {id:'smallPot', name:'Small stock pot', count:2},
+      {id:'bigSkillet', name:'Large skillet', count:1},
+      {id:'smallSkillet', name:'Small skillet', count:1},
+      {id:'ip', name:'Instant Pot', count:1},
+      {id:'airfryer', name:'Air fryer', count:1}
+    ]
+  },
+  recipeOrder: ['brisket','cider','pinwheels','beans','mash','veg','cornbread'],
+  recipes: {
+    brisket: {
+      name:'Maple-tomato braised brisket', short:'Brisket',
+      meta:['5-lb flat cut','Braise 275°F, 4½–6 hr (Wed)','Reheat 325°F, 35–45 min (Thu)'],
+      notes:[...FOIL, 'Sear and deglaze in the large skillet, then move everything into the foil pan.'],
+      ingredients:[
+        {g:'Meat & dry rub', items:['1 (5-lb) first-cut (flat-cut) beef brisket, fat cap left intact','2½ tsp kosher salt','1½ tsp freshly ground black pepper','2 tsp smoked or sweet paprika','1½ tsp garlic powder','1 tsp onion powder','2 tbsp neutral high-heat oil (avocado, canola or grapeseed)']},
+        {g:'Maple & tomato sauce', items:['1 can (15 oz) tomato sauce','1 can (6 oz) tomato paste','⅓ cup pure maple syrup (or dark brown sugar)','⅓ cup apple cider vinegar','2 tbsp Worcestershire sauce','1 tbsp Dijon mustard','1 tsp chili powder','¼ tsp ground allspice (try nutmeg instead)']},
+        {g:'Aromatics & braising liquid', items:['2 large yellow or sweet onions, thinly sliced into rings','4 cloves garlic, smashed','1 cup dry red wine (Cabernet or Merlot) or apple cider','2–3 cups low-sodium beef broth','6 sprigs fresh thyme','3 sprigs fresh rosemary','2 dried bay leaves']}
+      ],
+      steps:[
+        S2('Season and make the sauce','Preheat the oven to 275°F. Pat the brisket dry, mix the rub and rub it all over. Let it sit 20–30 minutes. Whisk all the sauce ingredients until smooth.'),
+        S2('Sear','Heat the oil over medium-high in the large skillet until shimmering. Sear fat side down 4–5 minutes, flip and sear 3–4 minutes, then move to a platter.'),
+        S2('Deglaze and build the braise','Lower to medium, cook the onions and garlic 3 minutes, pour in the wine and scrape up the browned bits. Move the onions to the foil pan, lay the brisket on top fat side up, pour the sauce over and tuck the herbs into the sides. Add broth around the edges (about 2 cups) so liquid comes ⅓–½ of the way up. Do not submerge it.'),
+        S2('Braise low and slow','Seal tightly and braise at 275°F for 4½–6 hours. Start checking at 4½ hours: done when a fork slides into the thickest part with zero resistance and it reads 195–200°F. If it feels tight, re-cover and give it 30–45 more minutes.'),
+        S2('Cool and chill overnight','Uncover so steam escapes and let it rest in the liquid 1 hour. Wrap the brisket and refrigerate. Strain the sauce (discard herb stems and bay leaves, keep the onions if you like) into a separate container and refrigerate.'),
+        S2('Slice cold and reheat','Lift the solid fat off the gravy. Slice the cold brisket against the grain ¼ inch thick, shingle into the pan, pour the gravy over, cover tightly and bake at 325°F for 35–45 minutes until bubbling at the edges.')
+      ]
+    },
+    cider: {
+      name:'Persimmon spiced cider', short:'Cider',
+      meta:['Makes 12 cups (6 servings)','Steep 20–30 min, never boil','Ready by 4:00 PM'],
+      notes:['After it steeps, strain out the whole spices and hold it in the two small pots on the small burners at the lowest setting.'],
+      ingredients:[
+        {g:'Cider', items:['12 cups (3 quarts) unfiltered apple cider','3 ripe Fuyu persimmons, tops trimmed, halved crosswise (plus 1 extra, thinly sliced, for garnish)','2 tsp unsalted butter or coconut oil','1½ tbsp pure maple syrup, plus more to taste','3 whole cinnamon sticks, plus extra for serving','2 whole star anise pods','4–5 whole cloves','2 strips orange peel (no white pith)','¾ tsp vanilla bean paste or pure vanilla extract','1–1½ tbsp fresh lemon juice']},
+        {g:'Liquor on the side', items:['Spiced pear liqueur, about 1 oz per mug','Bourbon, 1.5 oz per mug','Dark rum, 1.5 oz per mug']}
+      ],
+      steps:[
+        S2('Caramelize the persimmons','Melt the butter and 1½ tbsp maple syrup in the large stock pot over medium heat. Sear the persimmon halves cut side down 4–5 minutes until deeply browned.'),
+        S2('Add cider and spices','Pour in the cider. Add the cinnamon, star anise, cloves, orange peel and vanilla.'),
+        S2('Steep gently','Bring just to a bare simmer, then turn to Low, cover and steep 20–30 minutes. Avoid boiling so the cloves and star anise don\'t turn bitter.'),
+        S2('Balance and hold','Stir in the lemon juice and adjust sweetness with maple. Keep covered on the lowest setting.'),
+        S2('Serve and spike to order','Ladle into mugs, garnish with persimmon slices and a cinnamon stick. Set bottles and a jigger beside the pot.')
+      ]
+    },
+    pinwheels: {
+      name:'Artichoke-Boursin pinwheels', short:'Pinwheels',
+      meta:['24–28 pinwheels (serves 6)','Logs Thursday morning','Bake 425°F, 18–22 min, served with dinner'],
+      notes:['Move the puff pastry to the fridge Wednesday night so it thaws overnight.'],
+      ingredients:[
+        {g:'Pinwheels', items:['1 box (18 oz) Trader Joe\'s All-Butter Puff Pastry (2 sheets), thawed in the fridge overnight','2 cans (14 oz each) artichoke hearts in water, drained, squeezed very dry, finely chopped','1 package (5.2 oz) Garlic & Fine Herbs Boursin, softened 20–30 min','4 oz cream cheese, softened','1 cup (about 4 oz) shredded Gruyère (or Swiss/fontina)','⅓ cup grated Parmesan','1 tsp lemon zest (about ½ lemon)','1 tsp fresh thyme leaves (or ½ tsp dried)','¼ tsp freshly ground black pepper (taste before adding salt)','1 large egg beaten with 1 tbsp water (egg wash)']},
+        {g:'To finish', items:['Flaky salt','Hot honey, if using']}
+      ],
+      steps:[
+        S2('Make the filling','Mash the Boursin and cream cheese until smooth. Stir in the artichokes, Gruyère, Parmesan, lemon zest, thyme and pepper. Taste and add salt only if needed.'),
+        S2('Roll the logs','Line two rimmed baking sheets with parchment. Unroll one pastry sheet on a lightly floured surface, spread half the filling over it leaving a ½-inch bare border on one long edge, and brush that edge with egg wash. Roll up snugly from the opposite long edge and press the seam. Repeat.'),
+        S2('Chill','Wrap both logs seam side down and refrigerate at least 30 minutes (up to 24 hours).'),
+        S2('Slice and bake','Slice the cold logs into ¾-inch rounds, set 1 inch apart on the parchment, brush edges with egg wash. Bake on the upper-middle rack at 425°F for 18–22 minutes (check at 16), rotating halfway, until puffed and deeply golden.'),
+        S2('Serve','Cool on the pan 5 minutes. Finish with flaky salt and a drizzle of hot honey, if using.')
+      ]
+    },
+    beans: {
+      name:'Brown butter green beans with crispy leeks', short:'Green beans',
+      meta:['Serves 6–8','Morning prep Thursday','Finish in 8 minutes at 4:47 PM'],
+      notes:['Leave the fried leeks uncovered (or loosely tented with a dry paper towel) at room temperature so they stay crisp.'],
+      ingredients:[
+        {g:'Crispy leeks', items:['2 medium leeks, white and light green parts only','½ cup neutral oil','Flaky sea salt']},
+        {g:'Green beans', items:['2 lbs fresh green beans, stem ends trimmed','Kosher salt','3 tbsp unsalted butter','4 cloves garlic, thinly sliced or minced','½ tsp freshly cracked black pepper','1 large lemon (zest of half, plus 1½–2 tbsp juice)']}
+      ],
+      steps:[
+        S2('Slice and wash the leeks','Halve lengthwise, slice into ⅛-inch half-moons, swish in cold water, lift out and pat completely dry.'),
+        S2('Fry the leeks','Add the oil and leeks to a skillet over medium heat. Fry 5–7 minutes until pale golden and crisp, pulling them just before they look fully browned.'),
+        S2('Drain and store','Paper-towel-lined plate, flaky salt right away, leave uncovered at room temperature.'),
+        S2('Blanch and shock','Boil a large pot of generously salted water with an ice bath beside it. Cook the beans 3–4 minutes until bright green and crisp-tender, then ice them 2 minutes.'),
+        S2('Chill','Drain, pat dry and refrigerate in a container lined with paper towel.'),
+        S2('Brown the butter (right before dinner)','Large skillet, medium heat, 3 tbsp butter, 2–3 minutes until golden and nutty.'),
+        S2('Bloom the garlic','Lower to medium-low, add the garlic and stir 30–45 seconds.'),
+        S2('Glaze the beans','Add the beans, ½ tsp kosher salt and ½ tsp pepper. Toss 2–3 minutes until hot.'),
+        S2('Finish','Off the heat, toss in the lemon juice and zest. Platter, spoon over the brown butter, pile on the leeks.')
+      ]
+    },
+    mash: {
+      name:'Garlic-buttermilk mashed potatoes', short:'Mashed potatoes',
+      meta:['Serves 6','Garlic confit Wednesday','Hold on Keep Warm in the Instant Pot'],
+      notes:['You\'re making garlic confit Wednesday, so skip sautéing jarred garlic: just warm the confit with the butter and thyme.','If the mash stiffens while it holds, loosen it with a splash of buttermilk before serving.'],
+      ingredients:[
+        {g:'Mash', items:['6 medium-large russet potatoes (3½–4 lbs), scrubbed and quartered (peeled if you prefer)','1½ cups buttermilk, room temperature','½ cup crème fraîche, room temperature','½ cup Greek yogurt (or 1 cup crème fraîche total)','6–7 tbsp unsalted butter, room temperature','Garlic confit (in place of 10–12 tbsp jarred minced garlic)','1 tbsp fresh thyme leaves (less if lemon thyme)','¾ container fresh chives, finely chopped','Kosher salt and black pepper']}
+      ],
+      steps:[
+        S2('Temper the dairy','Take the buttermilk, crème fraîche, yogurt and butter out 30–45 minutes before cooking.'),
+        S2('Boil the potatoes','Cover with cold, generously salted water by 1 inch. Boil, then gently boil 17–20 minutes until completely fork-tender. Drain and steam dry 1–2 minutes.'),
+        S2('Warm the garlic and thyme','Instant Pot on Sauté, melt 2 tbsp butter, add the garlic confit and thyme for about a minute.'),
+        S2('Warm the buttermilk gently','Switch to Keep Warm (or off) before adding the buttermilk so it doesn\'t curdle.'),
+        S2('Mash','Add the potatoes and mash until smooth. Don\'t over-mash.'),
+        S2('Fold in the richness','Add the remaining butter, crème fraîche, yogurt, salt and pepper. Fold until creamy. Hold on Keep Warm with the lid ajar.'),
+        S2('Finish','Taste, adjust salt and pepper, fold in the chives right before serving.')
+      ]
+    },
+    veg: {
+      name:'Roasted squash, pancetta & crispy Brussels sprouts', short:'Squash & sprouts',
+      meta:['Serves 4','425°F, 38–40 min, two pans','Starts 4:15 PM'],
+      notes:['Racks: vegetables on one rack, pinwheels on the upper-middle rack. From 4:33 to 4:50 the oven holds all four sheet pans.'],
+      ingredients:[
+        {g:'Pan 1: squash, onion & pancetta', items:['1 large butternut squash, peeled, ~1-inch cubes','1 large red onion, cut into wedges','4 oz pancetta, ¼–½ inch pieces','1 tbsp fresh thyme, finely chopped','1–1½ tbsp olive oil','Salt and black pepper']},
+        {g:'Pan 2: crispy Brussels sprouts', items:['1 lb Brussels sprouts, bone-dry, trimmed, halved (quartered if jumbo), loose leaves saved','1½–2 tbsp olive oil','Salt and black pepper']},
+        {g:'Maple-vinegar finishing sauce', items:['1 tbsp maple syrup','1 tbsp apple cider vinegar','½ tsp salt']}
+      ],
+      steps:[
+        S2('Preheat the second pan','With the oven at 425°F, slide in an empty rimmed sheet pan.'),
+        S2('Pan 1 in (minute 0)','Toss squash and onion with oil, salt and pepper on an unheated pan, single layer, scatter pancetta and thyme. Roast.'),
+        S2('Toss the sprouts','Make sure they\'re completely dry, then toss with oil, salt and pepper in a bowl until every leaf is coated.'),
+        S2('Pan 2 in (minute 15)','Arrange the sprouts cut side down on the hot pan, loose leaves in the gaps. Roast undisturbed 15–18 minutes.'),
+        S2('Flip and pull Pan 1 (minute 30–38)','Flip the sprouts and roast 5–7 more minutes. Pull Pan 1 when the squash is tender and the pancetta crisp.'),
+        S2('Sauce and serve (minute 38–40)','Pull the sprouts when deeply browned. Combine both pans, drizzle the maple-vinegar sauce, toss gently and serve.')
+      ]
+    },
+    cornbread: {
+      name:'Pumpkin cornbread', short:'Cornbread',
+      meta:['350°F, 45 min','Bake Thursday morning','Serve room temp or warmed'],
+      notes:['Store it wrapped on the counter, not in the fridge, which dries cornbread out.'],
+      ingredients:[{g:'Cornbread', items:['1 box Trader Joe\'s cornbread mix','Whatever the box calls for','½ can canned pumpkin']}],
+      steps:[
+        S2('Mix','Preheat the oven to 350°F. Make the batter as the box says, adding ½ can pumpkin.'),
+        S2('Bake','Bake 45 minutes, longer than the box says.'),
+        S2('Cool','Cool on the counter and wrap once cool.'),
+        S2('Warm (optional)','Air fryer at 325°F for 2–3 minutes, then wrap in a towel.')
+      ]
+    }
+  },
+  tasks: [
+    // ---------- WEDNESDAY ----------
+    {id:'w-rub', day:'wed', t:'09:30', dur:5, r:'brisket', who:'h', from:['wed','08:00'], for:{id:'w-season', before:0},
+     title:'Mix the brisket dry rub',
+     steps:['In a small bowl, combine 2½ tsp kosher salt, 1½ tsp freshly ground black pepper, 2 tsp paprika, 1½ tsp garlic powder and 1 tsp onion powder.','Stir and set the bowl next to the stove.']},
+    {id:'w-aromatics', day:'wed', t:'09:40', dur:10, r:'brisket', who:'h', from:['wed','08:00'], for:{id:'w-sear', before:0},
+     title:'Slice onions and smash garlic for the brisket',
+     steps:['Peel 2 large yellow or sweet onions and slice them thinly into rings.','Smash 4 garlic cloves with the flat of a knife and peel off the skins.','Gather 6 thyme sprigs, 3 rosemary sprigs and 2 dried bay leaves.','Put everything in one bowl next to the stove.']},
+    {id:'w-season', day:'wed', t:'10:00', dur:30, r:'brisket', who:'mm',
+     title:'Season the brisket and whisk the sauce',
+     steps:['Preheat the oven to 275°F.','Pat the brisket dry and rub the spice mix all over it.','Let it sit on the counter 20–30 minutes.','Meanwhile, whisk all the maple-tomato sauce ingredients until smooth.']},
+    {id:'w-sear', day:'wed', t:'10:30', dur:15, r:'brisket', who:'mm', uses:{bigSkillet:1, burnerGood:1}, needs:['w-season'],
+     title:'Sear the brisket and build the braise',
+     steps:['Heat 2 tbsp oil in the large skillet over medium-high until shimmering.','Sear fat side down 4–5 min, flip, sear 3–4 min, move to a platter. If it won\'t lie flat, cut it in half to sear.','Lower to medium: onions and garlic 3 min, then 1 cup wine (or cider), scraping up the browned bits.','Onions into the foil pan, brisket on top fat side up, sauce over, herbs tucked in.','Pour about 2 cups broth around the edges so liquid comes ⅓–½ of the way up. Don\'t submerge it.'],
+     notes:FOIL},
+    {id:'w-braise', day:'wed', t:'10:45', dur:270, r:'brisket', who:'mm', needs:['w-sear'],
+     oven:{temp:275, slots:1, min:270, max:360, check:'Fork slides in with zero resistance, 195–200°F. If it feels tight, cover and give it 30–45 more minutes.'},
+     title:'Braise the brisket',
+     steps:['Crimp foil over the pan, lid on, set it on a sheet pan and slide it into the 275°F oven.','Start checking at 4½ hours.'],
+     out:['Uncover so steam escapes and let it rest in the liquid for 1 hour.'], notes:FOIL},
+    {id:'w-peelgarlic', day:'wed', t:'10:45', dur:15, r:'mash', who:'h', from:['wed','08:00'], for:{id:'w-confit', before:0},
+     title:'Peel garlic for the confit',
+     steps:['Break about 3 heads of garlic into cloves and peel every clove.','Trim off any hard root ends.','Put them in a small bowl next to the stove.']},
+    {id:'w-confit', day:'wed', t:'11:00', dur:45, r:'mash', who:'mm', uses:{smallPot:1, burnerTiny:1},
+     title:'Make the garlic confit',
+     steps:['Put the peeled cloves in a small pot and cover them with olive oil.','Small burner, lowest heat, 30–45 min until soft and golden. It should barely bubble.','Cool, then refrigerate in its oil. It must stay in the fridge.']},
+    {id:'w-squash', day:'wed', t:'11:30', dur:20, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pan1toss', before:10},
+     title:'Peel and cube the butternut squash',
+     steps:['Peel the squash with a vegetable peeler.','Cut off both ends, halve it lengthwise and scoop out the seeds.','Cut into cubes about 1 inch across.','Store in a covered container in the fridge labeled "squash".']},
+    {id:'w-onionpancetta', day:'wed', t:'12:00', dur:10, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pan1toss', before:10},
+     title:'Cut the red onion wedges and dice the pancetta',
+     steps:['Cut 1 large red onion into wedges, keeping a little root on each so they hold together.','Cut 4 oz pancetta into ¼–½ inch pieces.','Store each in its own covered container in the fridge.']},
+    {id:'w-sprouts', day:'wed', t:'12:15', dur:20, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pinslice', before:5},
+     title:'Trim and halve the Brussels sprouts',
+     steps:['Trim the tough brown stem ends off 1 lb of sprouts.','Halve small and medium ones; quarter any jumbo ones.','Save the loose outer leaves. They get crispy.','Pat everything completely dry. Wet sprouts won\'t crisp.','Store in a container lined with paper towels in the fridge.']},
+    {id:'w-beans', day:'wed', t:'13:00', dur:15, r:'beans', who:'h', from:['wed','09:00'], for:{id:'t-blanch', before:0},
+     title:'Trim the green beans',
+     steps:['Snap or cut the stem ends off 2 lbs green beans.','Rinse, dry, and refrigerate in a bag.']},
+    {id:'w-ciderkit', day:'wed', t:'13:15', dur:5, r:'cider', who:'h', from:['wed','09:00'], for:{id:'t-ciderbrew', before:0},
+     title:'Cut orange peel and measure the cider spices',
+     steps:['Peel 2 strips of orange peel with a vegetable peeler and scrape off any white pith.','In a small bowl: 3 cinnamon sticks, 2 star anise pods and 4–5 whole cloves. Add the peel.','Cover and refrigerate.']},
+    {id:'w-scrub', day:'wed', t:'13:20', dur:5, r:'mash', who:'h', from:['wed','09:00'], for:{id:'t-potatoes', before:30},
+     title:'Scrub the potatoes',
+     steps:['Scrub 6 medium-large russet potatoes under running water.','Dry them and leave them on the counter.']},
+    {id:'w-wrap', day:'wed', t:'16:15', dur:15, r:'brisket', who:'mm', after:{id:'w-braise', offset:60}, needs:['w-braise'],
+     title:'Wrap the brisket and strain the gravy',
+     steps:['Wrap the brisket tightly in foil (or a container) and refrigerate.','Strain the braising sauce into a separate container, discarding herb stems and bay leaves (keep the onions if you like). Refrigerate overnight.']},
+    {id:'w-pastry', day:'wed', t:'21:00', dur:1, r:'pinwheels', who:'mm',
+     title:'Move the puff pastry to the fridge',
+     steps:['Move the puff pastry box from the freezer to the fridge so it thaws overnight.']},
+
+    // ---------- THURSDAY MORNING ----------
+    {id:'t-cbmix', day:'thu', t:'08:30', dur:15, r:'cornbread', who:'mm',
+     title:'Preheat to 350°F and mix the cornbread',
+     steps:['Preheat the oven to 350°F.','Mix the Trader Joe\'s cornbread mix as the box says, plus ½ can pumpkin.','Pour into the pan.']},
+    {id:'t-soften', day:'thu', t:'08:30', dur:2, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:30},
+     title:'Set out the Boursin and cream cheese to soften',
+     steps:['Take the Boursin (5.2 oz) and 4 oz cream cheese out of the fridge.','Leave them unwrapped on the counter. They need 20–30 minutes.']},
+    {id:'t-icebath', day:'thu', t:'08:40', dur:3, r:'beans', who:'h', from:['thu','07:30'], for:{id:'t-blanch', before:-10},
+     title:'Set up the ice bath for the green beans',
+     steps:['Fill a large bowl with ice and cold water.','Set it right next to the stove.']},
+    {id:'t-cbbake', day:'thu', t:'08:45', dur:45, r:'cornbread', who:'mm', needs:['t-cbmix'],
+     oven:{temp:350, slots:1, min:45, max:50, check:'45 minutes, longer than the box says.'},
+     title:'Bake the cornbread',
+     steps:['Bake at 350°F for 45 minutes.'],
+     out:['Cool on the counter. Wrap once cool. Don\'t refrigerate.']},
+    {id:'t-leekprep', day:'thu', t:'08:45', dur:10, r:'beans', who:'h', from:['thu','07:30'], for:{id:'t-leeks', before:5},
+     title:'Slice and wash the leeks',
+     steps:['Use only the white and light green parts of 2 leeks.','Halve them lengthwise, then slice crosswise into thin half-moons (about ⅛ inch).','Swish them in a bowl of cold water to loosen the dirt.','Lift them out onto a clean towel and pat completely dry.']},
+    {id:'t-blanch', day:'thu', t:'08:45', dur:25, r:'beans', who:'mm', uses:{bigPot:1, burnerGood:1},
+     title:'Blanch and chill the green beans',
+     steps:['Bring the large stock pot of generously salted water to a boil.','Cook the beans 3–4 min until bright green and crisp-tender.','Ice bath 2 minutes.','Drain, pat dry, refrigerate in a container lined with paper towel.']},
+    {id:'t-artichokes', day:'thu', t:'09:00', dur:10, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
+     title:'Drain, squeeze and chop the artichokes',
+     steps:['Drain 2 cans (14 oz each) of artichoke hearts.','Squeeze them very dry in a clean towel. Really wring them out.','Chop finely and put them in a bowl.']},
+    {id:'t-pinmise', day:'thu', t:'09:05', dur:10, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
+     title:'Grate the cheeses, zest the lemon, make the egg wash',
+     steps:['Shred 1 cup (about 4 oz) Gruyère.','Grate ⅓ cup Parmesan.','Zest 1 tsp lemon (about ½ lemon) and pick 1 tsp fresh thyme leaves.','Beat 1 egg with 1 tbsp water in a small bowl.','Set it all next to the softened cheeses.']},
+    {id:'t-parchment', day:'thu', t:'09:10', dur:3, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
+     title:'Line two baking sheets with parchment',
+     steps:['Line two rimmed baking sheets with parchment paper.','Set them aside for the pinwheels.']},
+    {id:'t-leeks', day:'thu', t:'09:15', dur:15, r:'beans', who:'mm', uses:{bigSkillet:1, burnerGood:1},
+     title:'Fry the crispy leeks',
+     steps:['½ cup neutral oil and the dry leeks in the large skillet over medium heat.','Fry 5–7 min until pale golden and crisp. Pull them just before they look fully browned.','Paper-towel-lined plate, flaky salt right away.','Leave uncovered at room temperature.']},
+    {id:'t-logs', day:'thu', t:'09:30', dur:30, r:'pinwheels', who:'mm',
+     title:'Make the pinwheel logs',
+     steps:['Mash the Boursin and cream cheese until smooth.','Stir in the artichokes, Gruyère, Parmesan, zest, thyme and pepper. Taste; salt only if needed.','Spread half on one pastry sheet, leaving a ½-inch border on one long edge. Egg-wash the border and roll up from the other edge.','Repeat, wrap both logs and refrigerate seam side down.','Keep the leftover egg wash covered in the fridge.']},
+    {id:'t-amclean', day:'thu', t:'10:00', dur:15, r:'general', who:'h', from:['thu','09:30'], for:{id:'t-ciderbrew', before:60},
+     title:'Wash the morning dishes',
+     steps:['Wash the large stock pot, ice bath bowl, cutting boards and knives.','Leave the leek skillet and its oil for Bethany.','Put the large stock pot back on the stove for the cider.']},
+
+    // ---------- THURSDAY AFTERNOON ----------
+    {id:'t-quarter', day:'thu', t:'14:00', dur:10, r:'mash', who:'h', from:['thu','13:00'], for:{id:'t-potatoes', before:5},
+     title:'Quarter the potatoes',
+     steps:['Cut the 6 scrubbed russets into quarters.','Leave the skins on unless Bethany says to peel.','Put them in a bowl next to the stove.']},
+    {id:'t-thyme', day:'thu', t:'14:10', dur:5, r:'veg', who:'h', from:['thu','12:00'], for:{id:'t-mash', before:5},
+     title:'Pick and chop the thyme',
+     steps:['Pick 1 tbsp thyme leaves into a small bowl labeled "mash".','Finely chop another 1 tbsp into a second bowl labeled "squash".']},
+    {id:'t-lemongarlic', day:'thu', t:'14:20', dur:8, r:'beans', who:'h', from:['thu','12:00'], for:{id:'t-beansfin', before:7},
+     title:'Zest and juice the lemon, slice the garlic',
+     steps:['Zest half a large lemon, then juice it to get 1½–2 tbsp juice.','Thinly slice 4 garlic cloves.','Put them in small bowls next to the stove.']},
+    {id:'t-maple', day:'thu', t:'14:30', dur:3, r:'veg', who:'h', from:['thu','12:00'], for:{id:'t-combine', before:8},
+     title:'Whisk the maple-vinegar sauce',
+     steps:['Whisk 1 tbsp maple syrup, 1 tbsp apple cider vinegar and ½ tsp salt in a small bowl.','Set it next to the oven.']},
+    {id:'t-ciderbrew', day:'thu', t:'14:30', dur:20, r:'cider', who:'mm', uses:{bigPot:1, burnerGood:1},
+     title:'Start the cider',
+     steps:['Large stock pot, medium heat: melt 2 tsp butter with 1½ tbsp maple.','Sear the persimmon halves cut side down 4–5 min until deeply browned.','Pour in the cider; add the spice bowl, orange peel and vanilla.','Bring just to a bare simmer.']},
+    {id:'t-chives', day:'thu', t:'14:40', dur:5, r:'mash', who:'h', from:['thu','14:00'], for:{id:'t-mashfin', before:5},
+     title:'Chop the chives',
+     steps:['Finely chop about ¾ of the container of fresh chives.','Put them in a small bowl next to the Instant Pot.']},
+    {id:'t-ciderstep', day:'thu', t:'14:50', dur:25, r:'cider', who:'mm', uses:{bigPot:1, burnerGood:1}, needs:['t-ciderbrew'],
+     title:'Steep the cider',
+     steps:['Turn to Low, cover and steep 20–30 min.','Don\'t let it boil.']},
+    {id:'t-slice', day:'thu', t:'15:00', dur:20, r:'brisket', who:'mm',
+     title:'Preheat to 325°F, skim and slice the brisket',
+     steps:['Preheat the oven to 325°F.','Lift the solid white fat off the gravy.','Slice the cold brisket against the grain, ¼ inch thick.','Shingle the slices into the foil pan and pour the skimmed gravy over.','Crimp foil over the pan, then put the lid on.'],
+     notes:FOIL},
+    {id:'t-reheat', day:'thu', t:'15:20', dur:35, r:'brisket', who:'mm', needs:['t-slice'],
+     oven:{temp:325, slots:1, min:35, max:45, check:'Heated through and bubbling around the edges.'},
+     title:'Reheat the brisket',
+     steps:['Set the foil pan on a sheet pan and slide it into the 325°F oven.'],
+     out:['Keep the foil and lid on while the oven heats to 425°F.'], notes:FOIL},
+    {id:'t-ciderfin', day:'thu', t:'15:20', dur:10, r:'cider', who:'mm', uses:{smallPot:2, burnerTiny:2}, needs:['t-ciderstep'],
+     title:'Finish the cider and move it to the small pots',
+     steps:['Stir in 1–1½ tbsp lemon juice; taste and adjust with maple.','Strain out the whole spices so the long hold doesn\'t turn bitter.','Split between the two small pots, covered, on the small burners at the lowest setting.']},
+    {id:'t-dairy', day:'thu', t:'15:20', dur:3, r:'mash', who:'h', from:['thu','15:00'], for:{id:'t-mash', before:35},
+     title:'Set out the dairy and garlic confit',
+     steps:['Take out the buttermilk (1½ cups), crème fraîche (½ cup), Greek yogurt (½ cup), 6–7 tbsp butter and the garlic confit.','Leave them on the counter by the Instant Pot.']},
+    {id:'t-rinse', day:'thu', t:'15:22', dur:3, r:'mash', who:'h', from:['thu','15:15'], for:{id:'t-potatoes', before:0},
+     title:'Rinse the large stock pot',
+     steps:['Once Bethany has moved the cider out, rinse the large stock pot.','Put it back on the big burner for the potatoes.']},
+    {id:'t-potatoes', day:'thu', t:'15:25', dur:40, r:'mash', who:'mm', uses:{bigPot:1, burnerGood:1},
+     title:'Boil the potatoes',
+     steps:['Potatoes into the large stock pot, covered by 1 inch of cold, generously salted water.','Boil on high, then gently boil 17–20 min until completely fork-tender.']},
+    {id:'t-station', day:'thu', t:'15:30', dur:10, r:'cider', who:'h', from:['thu','15:00'], due:['thu','15:55'],
+     title:'Set up the cider station',
+     steps:['Set out mugs and a ladle by the cider pots.','Thinly slice 1 Fuyu persimmon for garnish and set out extra cinnamon sticks.','Set out the spiced pear liqueur, bourbon, dark rum and a jigger.']},
+    {id:'t-pmclean', day:'thu', t:'15:45', dur:10, r:'general', who:'h', from:['thu','15:30'], for:{id:'t-pinslice', before:5},
+     title:'Clear counters and set out serving dishes',
+     steps:['Wash prep bowls and cutting boards.','Set out a platter for the green beans, a large bowl for the squash and sprouts, a bowl for the mash and a basket for the cornbread.']},
+    {id:'t-mash', day:'thu', t:'16:05', dur:15, r:'mash', who:'mm', uses:{ip:1}, needs:['t-potatoes'],
+     title:'Drain and mash the potatoes',
+     steps:['Drain and let steam dry 1–2 minutes.','Instant Pot on Sauté: 2 tbsp butter, the garlic confit and thyme, about 1 minute.','Switch to Keep Warm, add the buttermilk, then the potatoes. Mash.','Fold in the remaining butter, crème fraîche, yogurt, salt and pepper.','Keep Warm, lid ajar. Hold back a splash of buttermilk.']},
+    {id:'t-up425', day:'thu', t:'16:05', dur:2, r:'veg', who:'mm', needs:['t-reheat'],
+     title:'Turn the oven up to 425°F',
+     steps:['Brisket should be out with its foil and lid on.','Set the oven to 425°F and slide in an empty rimmed sheet pan for the sprouts.']},
+    {id:'t-pan1toss', day:'thu', t:'16:10', dur:5, r:'veg', who:'mm',
+     title:'Toss Pan 1',
+     steps:['On an unheated sheet pan, toss the squash and onion with 1–1½ tbsp olive oil, salt and pepper.','Single layer, pancetta scattered over, thyme sprinkled on top.']},
+    {id:'t-pan1', day:'thu', t:'16:15', dur:35, r:'veg', who:'mm', needs:['t-pan1toss','t-up425'],
+     oven:{temp:425, slots:1, min:35, max:38, check:'Squash fork-tender, pancetta crisp.'},
+     title:'Roast Pan 1: squash, onion and pancetta',
+     steps:['Into the 425°F oven.'], out:['Set aside for combining with the sprouts.']},
+    {id:'t-pinslice', day:'thu', t:'16:25', dur:8, r:'pinwheels', who:'mm', needs:['t-logs'],
+     title:'Slice the pinwheels',
+     steps:['Slice the cold logs into ¾-inch rounds.','Arrange 1 inch apart on the parchment-lined pans.','Brush the edges with the leftover egg wash.','Toss the sprouts with 1½–2 tbsp oil, salt and pepper while you\'re at it.']},
+    {id:'t-sprouts', day:'thu', t:'16:30', dur:23, r:'veg', who:'mm', needs:['t-up425'],
+     oven:{temp:425, slots:1, min:23, max:25, mid:{at:15, label:'Flip the Brussels sprouts'}, check:'Deeply browned outside, tender all the way through.'},
+     title:'Roast Pan 2: Brussels sprouts',
+     steps:['Pull the hot empty pan, arrange the sprouts cut side down, loose leaves in the gaps.','Roast undisturbed 15–18 min, flip, then 5–7 min more.']},
+    {id:'t-pinwheels', day:'thu', t:'16:33', dur:18, r:'pinwheels', who:'mm', needs:['t-pinslice'],
+     oven:{temp:425, slots:2, min:18, max:22, mid:{at:9, label:'Rotate the pinwheel pans'}, check:'Puffed, crisp and deeply golden. Start checking at 16 minutes.'},
+     title:'Bake the pinwheels',
+     steps:['Both pans on the upper-middle rack.','Rotate the pans halfway through.'],
+     out:['Cool on the pan 5 minutes.','Flaky salt and a drizzle of hot honey, if using.']},
+    {id:'t-cbwarm', day:'thu', t:'16:35', dur:3, r:'cornbread', who:'mm', uses:{airfryer:1}, optional:true,
+     title:'Warm the cornbread (optional)',
+     steps:['Air fryer at 325°F for 2–3 minutes.','Wrap in a towel.']},
+    {id:'t-beansfin', day:'thu', t:'16:47', dur:8, r:'beans', who:'mm', uses:{bigSkillet:1, burnerGood:1}, needs:['t-blanch','t-leeks'],
+     title:'Finish the green beans',
+     steps:['Large skillet, medium: 3 tbsp butter, 2–3 min until golden and nutty.','Medium-low: garlic 30–45 seconds.','Beans + ½ tsp kosher salt + ½ tsp pepper, toss 2–3 min.','Off heat: lemon juice and zest. Platter, brown butter over, crispy leeks on top.']},
+    {id:'t-brfinal', day:'thu', t:'16:50', dur:10, r:'brisket', who:'mm', needs:['t-reheat'],
+     oven:{temp:425, slots:1, min:8, max:12, check:'Hot through. It only needs to warm back up.'},
+     title:'Brisket back in, covered',
+     steps:['Still covered and on its sheet pan, into the slot Pan 1 just left.'], notes:FOIL},
+    {id:'t-combine', day:'thu', t:'16:53', dur:3, r:'veg', who:'mm', needs:['t-pan1','t-sprouts'],
+     title:'Combine the pans and sauce them',
+     steps:['Combine both pans in the large serving bowl.','Drizzle the maple-vinegar sauce over and toss gently.']},
+    {id:'t-mashfin', day:'thu', t:'16:55', dur:2, r:'mash', who:'mm', needs:['t-mash'],
+     title:'Finish the mash',
+     steps:['Taste and adjust salt and pepper.','Fold in the chives. Loosen with buttermilk if it\'s stiff.']},
+    {id:'t-serve', day:'thu', t:'17:00', dur:0, r:'general', who:'mm', final:true,
+     title:'Everything to the table',
+     steps:['Brisket out of the oven. Dinner is served.']}
+  ]
+};
+
+/* ============ FIREBASE (paste your config here) ============ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAbhS6MayRlnkPAaO8eKkfbsb2UvLqKSqg",
+  authDomain: "thanksgiving-planner-bd998.firebaseapp.com",
+  projectId: "thanksgiving-planner-bd998",
+  storageBucket: "thanksgiving-planner-bd998.firebasestorage.app",
+  messagingSenderId: "568992142411",
+  appId: "1:568992142411:web:ae66b224824fd3b8d769ce"
+};
+
+/* ============ BASICS ============ */
+const YEAR = 2026, MONTH = 10;
+const DAY_DATE = { wed: 25, thu: 26 };
+const DAY_LABEL = { wed: 'Wednesday, Nov 25', thu: 'Thursday, Nov 26' };
+const DAY_SHORT = { wed: 'Wed', thu: 'Thu' };
+function at(day, hm){ const [h,m] = String(hm||'00:00').split(':').map(Number); return new Date(YEAR, MONTH, DAY_DATE[day] || 26, h||0, m||0, 0, 0).getTime(); }
+const clone = o => JSON.parse(JSON.stringify(o));
+const rid = p => p + Math.random().toString(36).slice(2, 8);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+const HUES = [348, 205, 150, 32, 270, 95, 15, 225, 180, 310];
+
+/* ============ STATE ============ */
+const S = {
+  plan: clone(DEFAULT_PLAN), tasks:{}, people:{},
+  me: lsGet('tg-me'),            // {key, name, role}
+  key: null, suggestedName: '',
+  conn:'loading', ready:false,
+  view:'dashboard', recipeTab:null, planDay:null,
+  expanded:new Set(), collapsed:new Set(),
+  draft:null,                     // {kind, plan, base, recipeId?, shift?}
+  schedDay:null, hjFilter:'open', openTask:null,
+  pretend: lsGet('tg-pretend'), planMode: lsGet('tg-planmode') || 'list', modalTask: null,
+  subs:{}, add:null, zoom:'day', landingDishes:null
+};
+if(S.me && S.me.role === 'mm') S.me.role = 'host';
+let db = null, userCap = null;
+function now(){ const p = S.pretend; return p ? p.at + (Date.now() - p.setAt) : Date.now(); }
+
+/* ============ FORMAT ============ */
+function fmtTime(ms){ return new Date(ms).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
+function fmtDT(ms){ const d = new Date(ms); return d.toLocaleDateString([], {weekday:'short'}) + ' ' + fmtTime(ms); }
+function fmtRel(ms){ const d = new Date(ms), n = new Date(now()); return d.toDateString() === n.toDateString() ? fmtTime(ms) : fmtDT(ms); }
+function mins(ms){ return Math.round(ms/60000); }
+function dur(m){ m = Math.round(m); if(Math.abs(m) < 60) return m + ' min'; const h = Math.floor(Math.abs(m)/60), r = Math.abs(m)%60; return h + ' hr' + (r ? ' ' + r + ' min' : ''); }
+function rangeDur(a,b){ if(a===b) return dur(a); if(a<60 && b<60) return a+'–'+b+' min'; return dur(a)+' – '+dur(b); }
+function relTo(ms){ const d = mins(ms - now()); if(Math.abs(d) <= 1) return 'now'; return d > 0 ? 'in ' + dur(d) : dur(-d) + ' late'; }
+function hm(ms){ const d = new Date(ms); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function dayOf(ms){ return new Date(ms).getDate() === DAY_DATE.wed ? 'wed' : 'thu'; }
+function toMin(hmStr){ const [h,m] = hmStr.split(':').map(Number); return h*60+m; }
+function fromMin(n){ n = Math.max(0, Math.min(23*60+55, n)); return String(Math.floor(n/60)).padStart(2,'0') + ':' + String(n%60).padStart(2,'0'); }
+
+/* ============ PLAN MODEL ============ */
+function recipeOf(plan, r){ return plan.recipes[r] || {name:'Kitchen', short:'Kitchen'}; }
+function hueOf(plan, r){ const i = plan.recipeOrder.indexOf(r); return i < 0 ? 0 : HUES[i % HUES.length]; }
+function findTask(plan, id){ return plan.tasks.find(t => t.id === id); }
+function prog(id){ return S.tasks[id] || {}; }
+function dinnerAt(plan){ return at('thu', plan.dinner); }
+function len(t){ return t.oven ? t.oven.min : (t.dur || 0); }
+function sched(plan, t, live){
+  if(t.final) return dinnerAt(plan);
+  if(t.after && live){ const p = prog(t.after.id); if(p.outAt) return p.outAt + t.after.offset*60000; }
+  return at(t.day, t.t);
+}
+function endOf(plan, t){ return sched(plan, t) + len(t)*60000; }
+function dueOf(plan, t){
+  if(t.for){ const target = findTask(plan, t.for.id); if(target) return sched(plan, target, true) - (t.for.before||0)*60000; }
+  if(t.due) return at(...t.due);
+  return at(t.day, t.t) + 60*60000;
+}
+function fromOf(plan, t){
+  const f = t.from ? at(...t.from) : at(t.day, t.t);
+  return Math.min(f, dueOf(plan, t) - (t.dur||5)*60000);
+}
+function displayTime(plan, t){ return t.who === 'h' ? Math.min(at(t.day, t.t), dueOf(plan, t) - (t.dur||5)*60000) : sched(plan, t, true); }
+function dueLabel(plan, t){ const d = dueOf(plan, t); return 'by ' + (dayOf(d) !== t.day ? fmtDT(d) : fmtTime(d)); }
+const isDone = t => !!prog(t.id).done;
+const inOven = t => { const s = prog(t.id); return !!(t.oven && s.inOvenAt && !s.done); };
+const started = t => { const s = prog(t.id); return !!(s.startedAt && !s.done); };
+const active = t => inOven(t) || started(t);
+const weight = t => Math.max(2, Math.min(30, t.dur || 3));
+function toolMap(plan){ return Object.fromEntries(plan.kitchen.tools.map(x => [x.id, x])); }
+function usesList(plan, t){
+  const tm = toolMap(plan);
+  return Object.entries(t.uses || {}).filter(([,q]) => q > 0).map(([k,q]) => (q > 1 ? q + ' × ' : '') + (tm[k] ? tm[k].name : 'Missing tool'));
+}
+function personName(key){ const p = S.people[key]; return (p && p.name) || 'A helper'; }
+function colorFor(key){ let h = 0; for(const c of String(key)) h = (h*31 + c.charCodeAt(0)) >>> 0; return `hsl(${HUES[h % HUES.length]} 55% 42%)`; }
+
+/* Static check of a plan: equipment, oven, order, dinner time, helper windows */
+function planIssues(plan){
+  const out = [], seen = new Set();
+  const add = (lv, text, ids) => { if(seen.has(text)) return; seen.add(text); out.push({lv, text, ids}); };
+  const iv = plan.tasks.filter(t => t.who === 'mm' && !t.final).map(t => ({t, s: sched(plan, t), e: endOf(plan, t)}));
+  const tm = toolMap(plan);
+  for(const {t} of iv) for(const [k, q] of Object.entries(t.uses || {})){
+    if(!q) continue;
+    const tool = tm[k];
+    if(!tool || tool.count < q) add('crit', `"${t.title}" needs ${q} × ${tool ? tool.name.toLowerCase() : 'a tool you removed'}, but your kitchen has ${tool ? tool.count : 0}.`, [t.id]);
+  }
+  for(const tool of plan.kitchen.tools){
+    const users = iv.filter(x => (x.t.uses || {})[tool.id]);
+    for(const a of users){
+      const act = users.filter(b => b.s <= a.s && a.s < b.e);
+      const q = act.reduce((n, b) => n + (b.t.uses[tool.id] || 0), 0);
+      if(q > tool.count && act.length > 1) add('crit', `${tool.name}: ${act.map(b => `"${b.t.title}"`).join(' and ')} overlap at ${fmtDT(a.s)}. You have ${tool.count}.`, act.map(b => b.t.id));
+    }
+  }
+  const ov = iv.filter(x => x.t.oven);
+  for(const a of ov){
+    const act = ov.filter(b => b.s <= a.s && a.s < b.e);
+    const slots = act.reduce((n, b) => n + (b.t.oven.slots || 1), 0);
+    if(slots > plan.kitchen.ovenSpots) add('crit', `Oven over capacity at ${fmtDT(a.s)}: ${slots} sheet-pan spots needed (${act.map(b => recipeOf(plan, b.t.r).short).join(', ')}), room for ${plan.kitchen.ovenSpots}.`, act.map(b => b.t.id));
+    const temps = [...new Set(act.map(b => b.t.oven.temp))];
+    if(temps.length > 1) add('crit', `Oven temperature clash at ${fmtDT(a.s)}: ${act.map(b => `${recipeOf(plan, b.t.r).short} ${b.t.oven.temp}°F`).join(' vs ')}.`, act.map(b => b.t.id));
+  }
+  for(const x of iv) for(const nid of (x.t.needs || [])){
+    const n = iv.find(y => y.t.id === nid);
+    if(n && n.e > x.s) add('warn', `"${x.t.title}" starts at ${fmtDT(x.s)}, before "${n.t.title}" is done at ${fmtTime(n.e)}.`, [x.t.id, n.t.id]);
+  }
+  const dz = dinnerAt(plan);
+  for(const x of iv) if(!x.t.optional && x.e > dz) add('warn', `"${x.t.title}" finishes at ${fmtDT(x.e)}, after dinner at ${fmtTime(dz)}.`, [x.t.id]);
+  for(const t of plan.tasks.filter(t => t.who === 'h')){
+    const d = dueOf(plan, t), f = t.from ? at(...t.from) : null;
+    if(f && f + (t.dur||0)*60000 > d) add('warn', `Helper job "${t.title}" can't start until ${fmtDT(f)} but is needed by ${fmtDT(d)}.`, [t.id]);
+  }
+  return out;
+}
+function plannedFinish(plan){
+  let m = dinnerAt(plan);
+  for(const t of plan.tasks) if(t.who === 'mm' && t.day === 'thu' && !t.optional && !t.final) m = Math.max(m, endOf(plan, t));
+  return m;
+}
+
+/* ============ LIVE ANALYSIS ============ */
+function progress(filter){
+  let total = 0, done = 0, n = 0, nd = 0;
+  for(const t of S.plan.tasks){
+    if(t.optional || (filter && !filter(t))) continue;
+    total += weight(t); n++;
+    if(isDone(t)){ done += weight(t); nd++; }
+  }
+  return {pct: total ? Math.round(done/total*100) : 0, n, nd};
+}
+function projection(){
+  const plan = S.plan, nowMs = now(), dz = dinnerAt(plan);
+  let slip = 0;
+  for(const t of plan.tasks){
+    if(t.day !== 'thu' || t.who !== 'mm' || t.optional || t.final || isDone(t)) continue;
+    const sc = sched(plan, t, true); if(sc < dz - 150*60000) continue;
+    const s = prog(t.id); let late = 0;
+    if(t.oven && s.inOvenAt) late = s.inOvenAt - sc;
+    else if(s.startedAt) late = s.startedAt - sc;
+    else if(sc < nowMs) late = nowMs - sc;
+    slip = Math.max(slip, late);
+  }
+  const slipMin = Math.max(0, mins(slip));
+  const eta = Math.max(plannedFinish(plan), dz + slipMin*60000);
+  return {slipMin: mins(eta - dz), eta, allDone: plan.tasks.every(t => t.optional || isDone(t))};
+}
+function ovenState(){
+  const items = S.plan.tasks.filter(inOven);
+  return {items, temps:[...new Set(items.map(t => t.oven.temp))], slots: items.reduce((a,t) => a + (t.oven.slots||1), 0)};
+}
+function nextOvenTask(){ return S.plan.tasks.filter(t => t.oven && t.who==='mm' && !isDone(t) && !inOven(t)).sort((a,b) => sched(S.plan,a,true) - sched(S.plan,b,true))[0]; }
+function liveAlerts(f){
+  const plan = S.plan, out = [], nowMs = now(), ov = ovenState(), spots = plan.kitchen.ovenSpots;
+  const mine = f || (() => true);
+  const short = t => recipeOf(plan, t.r).short;
+  if(ov.temps.length > 1) out.push({lv:'crit', text:`The oven has food needing different temperatures: ${ov.items.map(t => `${short(t)} at ${t.oven.temp}°F`).join(', ')}.`});
+  if(ov.slots > spots) out.push({lv:'crit', text:`The oven is over capacity: ${ov.slots} sheet-pan spots in use, room for ${spots}.`});
+  for(const t of ov.items.filter(mine)){
+    const s = prog(t.id), el = mins(nowMs - s.inOvenAt);
+    if(t.oven.mid && el >= t.oven.mid.at && !s.midDone) out.push({lv:'warn', text:`${t.oven.mid.label} (${el} min in).`, act:'mid', id:t.id, btn:'Done'});
+    if(el >= t.oven.max) out.push({lv:'crit', text:`Check the ${short(t).toLowerCase()} now: ${dur(el)} in the oven, recipe max is ${dur(t.oven.max)}.`, act:'out', id:t.id, btn:'It\'s out'});
+    else if(el >= t.oven.min) out.push({lv:'warn', text:`${t.title} could be ready (${dur(el)} in). ${t.oven.check || ''}`, act:'out', id:t.id, btn:'It\'s out'});
+  }
+  const nx = nextOvenTask();
+  if(nx && mine(nx) && sched(plan,nx,true) - nowMs <= 10*60000){
+    if(ov.items.length && !ov.temps.includes(nx.oven.temp)) out.push({lv:'warn', text:`"${nx.title}" needs ${nx.oven.temp}°F at ${fmtTime(sched(plan,nx,true))}, but the oven still has ${ov.items.map(t=>short(t).toLowerCase()).join(' and ')} at ${ov.temps.join('/')}°F.`});
+    const free = Math.max(0, spots - ov.slots);
+    if(ov.slots + (nx.oven.slots||1) > spots) out.push({lv:'warn', text:`"${nx.title}" needs ${nx.oven.slots} sheet-pan spot${nx.oven.slots>1?'s':''} at ${fmtTime(sched(plan,nx,true))}. ${free===0 ? 'None are free yet' : 'Only '+free+' '+(free===1?'is':'are')+' free'}, so something has to come out first.`});
+  }
+  const tm = toolMap(plan), seen = new Set();
+  for(const p of plan.tasks){
+    if(p.who !== 'mm' || isDone(p) || active(p) || !p.uses || !mine(p)) continue;
+    const ps = sched(plan, p, true);
+    if(ps - nowMs > 10*60000 || nowMs - ps > 3*3600000) continue;
+    for(const [k, need] of Object.entries(p.uses)){
+      if(!need || !tm[k]) continue;
+      const holders = plan.tasks.filter(o => o !== p && (o.uses||{})[k] && started(o));
+      const used = holders.reduce((n,o) => n + o.uses[k], 0);
+      if(holders.length && used + need > tm[k].count && !seen.has(k)){
+        seen.add(k);
+        out.push({lv:'warn', text:`${tm[k].name} is still in use for "${holders[0].title}" (started ${fmtTime(prog(holders[0].id).startedAt)}). "${p.title}" needs it at ${fmtTime(ps)}.`});
+      }
+    }
+  }
+  const late = plan.tasks.filter(t => t.who==='mm' && mine(t) && !t.optional && !t.final && !isDone(t) && !active(t) && nowMs - sched(plan,t,true) > 10*60000).sort((a,b)=>sched(plan,a,true)-sched(plan,b,true));
+  if(late.length) out.push({lv:'warn', text:`Running behind: "${late[0].title}" was planned for ${fmtRel(sched(plan,late[0],true))}${late.length>1 ? ` (+${late.length-1} more late)` : ''}.`});
+  const risky = plan.tasks.filter(t => t.who==='h' && mine(t) && !isDone(t) && dueOf(plan,t) - nowMs <= 20*60000 && nowMs - dueOf(plan,t) < 2*3600000).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  for(const t of risky.slice(0,3)){
+    const a = prog(t.id).assignee, d = dueOf(plan,t);
+    const when = d < nowMs ? `was needed by ${fmtTime(d)}` : `is needed by ${fmtTime(d)}`;
+    out.push({lv: d < nowMs ? 'warn' : 'info', text: a ? `"${t.title}" (${personName(a)}) ${when}.` : `Nobody has claimed "${t.title}". It ${when}.`});
+  }
+  if(risky.length > 3) out.push({lv:'info', text:`${risky.length-3} more helper jobs are due soon.`});
+  const subsN = f ? 0 : Object.keys(S.subs).length;
+  if(subsN){ const [sid, sx] = Object.entries(S.subs)[0]; out.push({lv:'info', text: subsN > 1 ? `${subsN} new dishes are waiting for your review.` : `${personName(sx.by)} added "${sx.recipe.name}". It's waiting for your review.`, act:'reviewSub', id:sid, btn:'Review'}); }
+  const issues = f ? [] : planIssues(plan);
+  if(issues.length) out.push({lv:'info', text:`Your schedule has ${issues.length} conflict${issues.length>1?'s':''} to sort out.`, act:'go', v:'schedule', btn:'Review'});
+  const order = {crit:0, warn:1, info:2};
+  return out.sort((a,b) => order[a.lv]-order[b.lv]);
+}
+
+/* ============ PERSISTENCE ============ */
+const queues = {};
+function saveTask(id, patch){
+  const next = Object.assign({}, prog(id), patch, {by: S.key || null, at: Date.now()});
+  S.tasks[id] = next; persist('tasks/' + id, next); render();
+}
+function savePerson(key, data){ S.people[key] = Object.assign({}, S.people[key], data); persist('people/' + key, S.people[key]); }
+function savePlan(plan){ S.plan = plan; persist('plan/current', {plan, at: Date.now(), by: S.key}); render(); }
+function persist(path, data){
+  if(!db){ lsSet('tg-local2', {tasks:S.tasks, people:S.people, plan:S.plan}); lsSet('tg-subs', S.subs); return; }
+  const q = queues[path] || (queues[path] = {busy:false, next:null});
+  q.next = JSON.parse(JSON.stringify(data)); if(!q.busy) drain(path);
+}
+async function drain(path){
+  const q = queues[path]; q.busy = true;
+  while(q.next){
+    const data = q.next; q.next = null;
+    try{ await db.doc(path).set(data); }
+    catch(e){
+      const code = e && e.code;
+      if(code === 'invalid_argument' || code === 'permission-denied'){ S.conn = 'readonly'; render(); }
+      else if(code === 'unavailable'){ await new Promise(r => setTimeout(r, 600 + Math.random()*900)); try{ await db.doc(path).set(data); }catch(e2){ toast('That change didn\'t save. Check your connection and try again.'); } }
+      else if(code === 'quota_exceeded'){ toast('The shared plan is full and couldn\'t save that change.'); }
+      else toast('That change didn\'t save. Try again.');
+    }
+  }
+  q.busy = false;
+}
+
+/* ============ ICONS ============ */
+const I_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const I_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.2 1-3.8 2.2-5 .2 1.6 1 2.6 2 3 0-3.5-.6-6.3.8-9z"/></svg>';
+const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC = {
+  menu: svgI('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  home: svgI('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),
+  book: svgI('<path d="M5 4h9a4 4 0 0 1 4 4v12H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/>'),
+  people: svgI('<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5c2.8.3 5 2.6 5 5.5"/>'),
+  cal: svgI('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  clock: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  pot: svgI('<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h20M9 6c0-1 1-2 3-2s3 1 3 2"/>'),
+  clip: svgI('<path d="M9 4h6v3H9z"/><path d="M7 5H5v16h14V5h-2M8 12h8M8 16h5"/>'),
+  replay: svgI('<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 .8-7.3L4 9"/>'),
+  trash: svgI('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  out: svgI('<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4M6 12h10"/>'),
+  plus2: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+  swap: svgI('<circle cx="10" cy="8" r="3.2"/><path d="M4 20c0-3.3 2.7-6 6-6 1.3 0 2.5.4 3.5 1.1"/><path d="M16 13l3 3-3 3M19 16h-5"/>'),
+  list: svgI('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
+  tl: svgI('<path d="M4 4v16"/><rect x="7" y="5" width="9" height="4" rx="1.5"/><rect x="10" y="11" width="10" height="4" rx="1.5"/><rect x="7" y="17" width="7" height="3" rx="1.2"/>')
+};
+const I_PLUS = '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const I_MINUS = '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M1.5 6h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const I_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+/* ============ SHARED RENDER BITS ============ */
+function viLink(id, open, auto, act){
+  return `<button class="vi" data-act="${act||'expand'}" data-id="${id}"${auto?' data-auto="1"':''} aria-expanded="${open}"><span class="vi-ic" aria-hidden="true">${open?I_MINUS:I_PLUS}</span>${open?'Hide instructions':'View instructions'}</button>`;
+}
+function neededBy(ms, done){
+  const left = mins(ms - now());
+  const cls = done ? 'ok' : left < 0 ? 'late' : left <= 20 ? 'soon' : '';
+  return `<div class="needby ${cls}">${I_CLOCK}<span><b>Needed by ${esc(fmtRel(ms))}</b>${done ? '' : ` · ${esc(relTo(ms))}`}</span></div>`;
+}
+function detail(t){
+  const plan = S.plan, parts = [];
+  if(t.steps && t.steps.length) parts.push(`<ol>${t.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`);
+  if(t.oven) parts.push(`<div><b>Done when:</b> ${esc(t.oven.check || '')}</div>`);
+  if(t.out) parts.push(`<div><b>When it comes out:</b> ${t.out.map(esc).join(' ')}</div>`);
+  if(t.who==='h') parts.push(`<div class="uses">Helper job · can start ${esc(fmtDT(fromOf(plan,t)))} · needed by ${esc(fmtDT(dueOf(plan,t)))}</div>`);
+  const u = usesList(plan, t); if(u.length) parts.push(`<div class="uses">Uses: ${u.map(esc).join(' · ')}</div>`);
+  if(t.notes && t.notes.length) parts.push(`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`);
+  return `<div class="detail">${parts.join('')}</div>`;
+}
+function taskRow(t, opts={}){
+  const plan = S.plan, s = prog(t.id), done = !!s.done, io = inOven(t), stt = started(t);
+  const open = opts.forceOpen ? true : opts.open ? !S.collapsed.has(t.id) : S.expanded.has(t.id);
+  const sc = displayTime(plan, t);
+  const chips = [];
+  if(opts.showRecipe !== false) chips.push(`<span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span>`);
+  if(t.who==='h') chips.push(`<span class="chip helper">${s.assignee ? esc(personName(s.assignee)) : 'Helper job · open'}</span>`);
+  else if(ownerOf(t.r) && ownerOf(t.r) !== S.key) chips.push(`<span class="chip helper">${esc(personName(ownerOf(t.r)))}'s dish</span>`);
+  if(t.oven) chips.push(`<span class="chip ovenchip">${t.oven.temp}°F · ${rangeDur(t.oven.min, t.oven.max)}</span>`);
+  if(t.optional) chips.push('<span class="chip">Optional</span>');
+  const lateMin = mins(now() - sched(plan,t,true));
+  if(!done && !io && !stt && t.who==='mm' && lateMin > 10) chips.push(`<span class="chip late">${dur(lateMin)} late</span>`);
+  if(stt) chips.push(`<span class="chip ovenchip">Started ${fmtTime(s.startedAt)}</span>`);
+  if(io) chips.push(`<span class="chip ovenchip">In oven since ${fmtTime(s.inOvenAt)}</span>`);
+  if(done && s.doneBy && s.doneBy !== S.key && S.people[s.doneBy]) chips.push(`<span class="chip">Done by ${esc(personName(s.doneBy))}</span>`);
+  let actions = '';
+  if(!done && !opts.readonly){
+    if(t.oven){
+      actions = io
+        ? `<button class="btn heat small" data-act="out" data-id="${t.id}">Take out of oven</button><button class="btn small ghost" data-act="ovenTime" data-id="${t.id}">Fix time it went in</button><button class="btn small ghost" data-act="unoven" data-id="${t.id}">Undo</button>`
+        : `<button class="btn heat small" data-act="ovenTime" data-id="${t.id}">Mark in oven</button>`;
+    } else if(t.who==='mm' && Object.keys(t.uses||{}).some(k => t.uses[k] > 0)){
+      actions = stt ? `<button class="btn small" data-act="unstart" data-id="${t.id}">Cancel start</button>` : `<button class="btn small" data-act="start" data-id="${t.id}">Start</button>`;
+    }
+  }
+  let timer = '';
+  if(io){
+    const el = mins(now() - s.inOvenAt);
+    timer = `<div class="sub tnum">${dur(el)} so far · check ${fmtTime(s.inOvenAt + t.oven.min*60000)}${t.oven.max!==t.oven.min?'–'+fmtTime(s.inOvenAt + t.oven.max*60000):''}</div>`;
+  }
+  const label = done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`;
+  return `<div class="task${done?' done':''}">
+    <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
+    <div class="tmain">
+      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
+      ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>` + viLink(t.id, open, opts.open)}
+      ${timer}
+      ${open ? detail(t) : ''}
+      ${actions ? `<div class="btns">${actions}</div>` : ''}
+    </div>
+  </div>`;
+}
+function banner(){
+  const msg = {
+    local:'Not connected to the shared plan, so progress is saving on this device only.',
+    stale:'Can\'t reach the shared plan right now. What you see may be out of date.',
+    readonly:'You can see the plan but your changes aren\'t saving. Let Bethany know.'
+  }[S.conn];
+  return msg ? `<div class="banner"><div>${esc(msg)}</div></div>` : '';
+}
+function nowText(){ return S.pretend ? 'Pretend time ' + fmtDT(now()) : 'Now ' + fmtTime(now()); }
+function header(){
+  return `<header class="top"><div class="bar">
+    <button class="iconbtn" data-act="switch" aria-label="Switch user" title="Switch user">${IC.swap}</button>
+    <button class="iconbtn" data-act="menu" aria-haspopup="dialog" aria-label="Open menu" title="Menu">${IC.menu}</button>
+  </div></header>`;
+}
+function bottomNav(){
+  const host = effRole() === 'host';
+  const items = host ? [['dashboard','Dashboard',IC.home],['recipes','Recipes',IC.book],['helpers','Helpers',IC.people]]
+                     : [['mine','My dishes',IC.home],['recipes','Recipes',IC.book],['help','Help out',IC.people]];
+  const cur = items.some(([k]) => k === S.view) ? S.view : (['editRecipe','recipesAdmin','addDish'].includes(S.view) ? 'recipes' : null);
+  return `<nav class="bnav" aria-label="Sections"><div class="bnav-in">${items.map(([k,l,i])=>`<button data-act="go" data-v="${k}" ${cur===k?'aria-current="page"':''}>${i}<span>${l}</span></button>`).join('')}</div></nav>`;
+}
+
+/* ============ LANDING ============ */
+function renderLanding(){
+  const plan = S.plan, saved = S.people[S.key] || {};
+  const role = S.landingRole || roleOf(S.me) || roleOf(saved) || null;
+  const name = S.landingName ?? ((S.me && S.me.name) || saved.name || S.suggestedName || '');
+  const myK = keyFor(name), picked = S.landingDishes || dishesOf(myK);
+  const dishes = plan.recipeOrder.filter(k => plan.recipes[k]);
+  const dishList = `<div class="dishpick" role="group" aria-label="Dishes you're making">${dishes.map(k => { const o = ownerOf(k), taken = o && o !== myK;
+      return `<label class="dish${picked.includes(k)?' on':''}${taken?' taken':''}"><input type="checkbox" name="dish" value="${k}" ${picked.includes(k)?'checked':''} ${taken?'disabled':''}><span class="tile" aria-hidden="true">${esc((plan.recipes[k].short||'?').slice(0,1).toUpperCase())}</span><span><b>${esc(plan.recipes[k].short)}</b>${taken ? `<span class="sub">${esc(personName(o))} is making this</span>` : ''}</span></label>`; }).join('')}
+      <label class="dish add${S.landingNew?' on':''}"><input type="checkbox" name="newdish" ${S.landingNew?'checked':''}><span class="tile" aria-hidden="true">+</span><span><b>Add a new dish</b><span class="sub">You'll add the recipe next</span></span></label></div>`;
+  return `<div class="band"><span class="app-name">Thanksgiving Game Plan</span><h1 class="band-t">Hello!</h1><span class="nowpill tnum">${I_CLOCK}<span class="nowtxt">${esc(nowText())}</span></span></div>
+  <main class="sheet-main"><div class="land">
+    <h2 id="land-h">Welcome</h2>
+    <p class="sub" style="margin:0">Dinner is Thursday at ${esc(fmtTime(dinnerAt(plan)))}. Tell us who you are to get started.</p>
+    <form id="land-form" class="land-form" aria-labelledby="land-h">
+      <label class="field" for="land-name">Your name<input id="land-name" type="text" maxlength="30" autocomplete="given-name" value="${esc(name)}" placeholder="First name"></label>
+      <fieldset class="roles"><legend>How are you pitching in?</legend>
+        <label class="role${role==='owner'?' on':''}"><input type="radio" name="role" value="owner" ${role==='owner'?'checked':''}><b>I'm making a dish</b><span>Pick the dishes you own, or add one. You get a plan just for them.</span></label>
+        ${role==='owner' ? dishList : ''}
+        <label class="role${role==='h'?' on':''}"><input type="radio" name="role" value="h" ${role==='h'?'checked':''}><b>I'm helping</b><span>Pick up prep jobs like chopping and setting up.</span></label>
+        <label class="role${role==='host'?' on':''}"><input type="radio" name="role" value="host" ${role==='host'?'checked':''}><b>I'm the host</b><span>Run the whole dinner: every dish, the oven and the schedule.</span></label>
+      </fieldset>
+      <p class="formerr" id="land-err" role="alert"></p>
+      <div class="submit-row"><button class="btn primary big" type="submit">Continue</button></div>
+    </form>
+  </div></main>`;
+}
+
+/* ============ MASTERMIND: DASHBOARD ============ */
+
+/* ============ MASTERMIND: RECIPES ============ */
+function renderRecipes(){
+  const plan = S.plan;
+  const order = plan.recipeOrder.filter(k => plan.recipes[k]);
+  const top = `${isHost() ? reviewQueue() : ''}${!isHost() && mySubs().length ? `<section class="card"><h2>Waiting for the host</h2>${mySubs().map(([id,x]) => `<div class="sub">${esc(x.recipe.name)}: sent ${esc(fmtRel(x.at))}</div>`).join('')}</section>` : ''}`;
+  if(!order.length) return `<div class="wrap">${top}<section class="card"><h2>No recipes yet</h2><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button></section></div>`;
+  const cur = order.includes(S.recipeTab) ? S.recipeTab : order[0];
+  const r = plan.recipes[cur];
+  const tasks = plan.tasks.filter(t => t.r === cur).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
+  const p = progress(t => t.r === cur);
+  const sub = `<nav class="subtabs" aria-label="Recipes">${order.map(k=>`<button class="subtab" data-act="recipeTab" data-v="${k}" ${k===cur?'aria-current="page"':''}><span class="tile" aria-hidden="true">${esc((plan.recipes[k].short||'?').slice(0,1).toUpperCase())}</span><span class="lbl">${esc(plan.recipes[k].short)}</span></button>`).join('')}</nav>`;
+  const ovenSteps = tasks.filter(t => t.oven);
+  return `<div class="wrap" style="padding-bottom:0">${top}<div class="card-h"><span></span><button class="btn primary small" data-act="go" data-v="addDish">+ Add a dish</button></div></div>${sub}<div class="wrap">
+    <section class="card rhead">
+      <div class="card-h"><h1>${esc(r.name)}</h1>${canEditRecipe(cur) ? `<button class="btn small" data-act="editRecipe" data-id="${cur}">Edit recipe</button>` : ''}</div>
+      ${ownerOf(cur) ? `<div class="sub">Made by ${esc(personName(ownerOf(cur)))}</div>` : ''}
+      ${ovenSteps.length ? `<div class="ovenfacts">${ovenSteps.map(t => `<div class="ovenfact"><b>${t.oven.temp}°F</b><span>${esc(rangeDur(t.oven.min, t.oven.max))} · ${esc(DAY_SHORT[t.day])} ${esc(fmtTime(sched(plan,t,true)))}</span><span class="sub">${esc(t.title)}</span></div>`).join('')}</div>` : ''}
+      <div class="chips">${(r.meta||[]).map(m=>`<span class="pill neutral">${esc(m)}</span>`).join('')}</div>
+      <div class="prog" aria-label="${esc(r.short)} progress"><i style="width:${p.pct}%"></i></div>
+      <div class="sub">${p.nd} of ${p.n} steps done</div>
+      ${r.notes && r.notes.length ? `<div class="note"><ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
+    </section>
+    <section class="card"><h2>In the plan</h2><div class="tasks">${tasks.length ? tasks.map(t=>taskRow(t,{showRecipe:false, withDay:true})).join('') : '<p class="empty">No steps scheduled yet. Edit the recipe to add some.</p>'}</div></section>
+    <div class="rgrid">
+      <section class="card ing"><h2>Ingredients</h2>${(r.ingredients||[]).map(g=>`<div><h3>${esc(g.g)}</h3><ul>${g.items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</section>
+      <section class="card"><h2>Method</h2><ol class="steps">${(r.steps||[]).map(s=>`<li><b>${esc(s.h)}</b>${esc(s.x)}</li>`).join('')}</ol></section>
+    </div>
+  </div>`;
+}
+
+/* ============ MASTERMIND: HELPERS ============ */
+function renderHelpersAdmin(){
+  const plan = S.plan;
+  const helpers = Object.entries(S.people).filter(([,p]) => roleOf(p) !== 'host');
+  const hj = plan.tasks.filter(t => t.who==='h');
+  const converted = plan.tasks.filter(t => t.who==='mm' && t.wasHelper);
+  const f = S.hjFilter;
+  const filt = {open: t => !isDone(t) && !prog(t.id).assignee, claimed: t => !isDone(t) && prog(t.id).assignee, done: isDone, all: () => true}[f];
+  const list = hj.filter(filt).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  const counts = {open: hj.filter(t => !isDone(t) && !prog(t.id).assignee).length, claimed: hj.filter(t => !isDone(t) && prog(t.id).assignee).length, done: hj.filter(isDone).length, all: hj.length};
+  const people = `<section class="card"><div class="card-h"><h2>Helpers & dish owners</h2><span class="sub">${helpers.length} ${helpers.length===1?'person':'people'}</span></div>
+    ${helpers.length ? `<div class="hlist">${helpers.map(([k,p]) => {
+      const mine = hj.filter(t => prog(t.id).assignee === k), doing = mine.filter(t=>!isDone(t)), did = hj.filter(t => isDone(t) && (prog(t.id).doneBy===k || prog(t.id).assignee===k));
+      const pct = mine.length ? Math.round(mine.filter(isDone).length/mine.length*100) : 0;
+      return `<div class="hrow"><div class="avatar" style="background:${colorFor(k)}" aria-hidden="true">${esc((p.name||'?').slice(0,1).toUpperCase())}</div>
+        <div><b>${esc(p.name)}</b> <span class="sub">· ${did.length} done · ${doing.length} in progress</span>${dishesOf(k).filter(r=>S.plan.recipes[r]).length ? `<p>Owns: ${dishesOf(k).filter(r=>S.plan.recipes[r]).map(r=>esc(S.plan.recipes[r].short)).join(', ')}</p>` : ''}
+        <div class="prog thin"><i style="width:${pct}%"></i></div>
+        <p>${doing.length ? 'On: '+doing.map(t=>esc(t.title)).join('; ') : 'Not on a job right now'}</p></div></div>`;
+    }).join('')}</div>` : '<p class="empty">Nobody else has signed in yet. Share the page link; people enter their name and pick their dishes or "Helper".</p>'}
+  </section>`;
+  const jobs = `<section class="card"><div class="card-h"><h2>Helper jobs</h2>
+      <div class="seg" role="group" aria-label="Filter">${[['open','Open'],['claimed','Claimed'],['done','Done'],['all','All']].map(([k,l])=>`<button data-act="hjFilter" data-v="${k}" aria-pressed="${f===k}">${l} <span class="tnum">${counts[k]}</span></button>`).join('')}</div></div>
+    <p class="sub" style="margin:0">Anything you'd rather have the cook do can come off the helper list. It moves to the host, or to the dish's owner if it has one.</p>
+    <div class="tasks">${list.length ? list.map(t => {
+      const a = prog(t.id).assignee;
+      const open = S.expanded.has(t.id);
+      return `<div class="task nocheck${isDone(t)?' done':''}"><div class="tmain">
+        <div class="trow"><div class="tmeta"><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span><span class="chip">about ${t.dur} min</span>${a?`<span class="chip helper">${esc(personName(a))}</span>`:''}${isDone(t)?'<span class="chip">Done</span>':''}</div></div>
+        <div class="ttitle">${esc(t.title)}</div>
+        ${viLink(t.id, open)}
+        ${neededBy(dueOf(plan,t), isDone(t))}
+        ${open ? detail(t) : ''}
+        <div class="btns">${!isDone(t) ? `<button class="btn small" data-act="toMM" data-id="${t.id}">Make it a cook step</button>` : ''}${a && !isDone(t) ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}<button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
+      </div></div>`;
+    }).join('') : '<p class="empty">Nothing here.</p>'}</div>
+  </section>`;
+  const conv = converted.length ? `<section class="card"><h2>Moved off the helper list</h2><p class="sub" style="margin:0">Former helper jobs the cook is doing.</p>
+    <div class="tasks">${converted.map(t => `<div class="task nocheck"><div class="tmain"><div class="tmeta"><span class="time">${fmtDT(sched(plan,t))}</span><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span></div><div class="ttitle">${esc(t.title)}</div><div class="btns"><button class="btn small" data-act="toHelper" data-id="${t.id}">Give back to helpers</button></div></div></div>`).join('')}</div></section>` : '';
+  return `<div class="wrap split"><div class="col">${jobs}${conv}</div><aside class="rail">${people}</aside></div>`;
+}
+
+/* ============ EDITORS: shared ============ */
+function startDraft(kind, extra){ S.draft = Object.assign({kind, plan: clone(S.plan), base: clone(S.plan)}, extra || {}); }
+function dirty(){ return !!S.draft && (JSON.stringify(S.draft.plan) !== JSON.stringify(S.draft.base) || !!S.draft.ownerChanged); }
+function impactHtml(){
+  const d = S.draft; if(!d) return '';
+  const plan = d.plan, base = d.base;
+  const iss = planIssues(plan), baseKeys = new Set(planIssues(base).map(i=>i.text));
+  const pf = plannedFinish(plan), goal = dinnerAt(plan), pfBase = plannedFinish(base);
+  const moved = [];
+  for(const t of plan.tasks){
+    const b = findTask(base, t.id);
+    if(!b){ moved.push(`Added: "${t.title}"`); continue; }
+    if(t.who !== b.who){ moved.push(`"${t.title}" is now ${t.who==='mm' ? 'a cook step' : 'a helper job'}`); continue; }
+    if(t.who === 'mm'){ const a = sched(base,b), z = sched(plan,t); if(a !== z || len(b) !== len(t)) moved.push(`"${t.title}": ${fmtDT(a)} → ${fmtDT(z)}${len(b)!==len(t) ? ` (${dur(len(b))} → ${dur(len(t))})` : ''}`); }
+    else { const a = dueOf(base,b), z = dueOf(plan,t); if(a !== z) moved.push(`Helper deadline "${t.title}": by ${fmtDT(a)} → by ${fmtDT(z)}`); }
+  }
+  for(const b of base.tasks) if(!findTask(plan, b.id)) moved.push(`Removed: "${b.title}"`);
+  const finishLine = pf > goal ? `<span class="pill crit">Food ready ${esc(fmtTime(pf))}, ${dur(mins(pf-goal))} after your ${esc(fmtTime(goal))} goal</span>` : `<span class="pill good">Everything ready by ${esc(fmtTime(goal))}</span>`;
+  return `<div class="impact">
+    <div class="card-h"><h2>What this changes</h2>${dirty() ? '<span class="pill warn">Not saved</span>' : '<span class="pill neutral">No changes yet</span>'}</div>
+    <div>${finishLine}${pf !== pfBase ? ` <span class="sub">(was ${esc(fmtTime(pfBase))})</span>` : ''}</div>
+    ${!S.noAI && d.kind === 'recipe' && d.recipeId !== 'general' && iss.some(i => !baseKeys.has(i.text)) ? `<div class="btns"><button class="btn small primary" data-act="fixAI" ${S.fixing?'disabled':''}>${S.fixing ? 'Asking Claude…' : 'Ask Claude to fix the timing'}</button></div>` : ''}
+    <div><h3>Conflicts ${iss.length ? `<span class="sub">${iss.length}</span>` : ''}</h3>
+      ${iss.length ? `<div class="alerts">${iss.map(i=>`<div class="alert ${i.lv}"><p>${baseKeys.has(i.text)?'':'<b class="newtag">New</b> '}${esc(i.text)}</p></div>`).join('')}</div>` : '<p class="empty">No conflicts. Equipment, oven space and timing all fit.</p>'}
+    </div>
+    <div><h3>Steps that moved ${moved.length ? `<span class="sub">${moved.length}</span>` : ''}</h3>
+      ${moved.length ? `<ul class="moved">${moved.slice(0,14).map(m=>`<li>${esc(m)}</li>`).join('')}${moved.length>14?`<li>…and ${moved.length-14} more</li>`:''}</ul>` : '<p class="empty">Nothing has moved.</p>'}
+    </div>
+  </div>`;
+}
+function saveBar(){
+  const d = S.draft, mode = d && d.mode || 'edit', dt = dirty();
+  let label = 'You have unsaved changes', btns;
+  if(mode === 'new'){ label = isHost() ? 'Ready to add it?' : 'The host reviews new dishes before they join the plan.'; btns = `<button class="btn ghost" data-act="discard">Cancel</button><button class="btn primary" data-act="saveDraft">${isHost() ? 'Add to plan' : 'Send to host'}</button>`; }
+  else if(mode === 'review'){ label = 'Accept this dish into the plan?'; btns = `<button class="btn ghost" data-act="declineSub">Decline</button><button class="btn primary" data-act="saveDraft">Accept</button>`; }
+  else { if(!dt) label = 'No unsaved changes'; btns = `<button class="btn ghost" data-act="discard" ${dt?'':'disabled'}>Discard</button><button class="btn primary" data-act="saveDraft" ${dt?'':'disabled'}>Save changes</button>`; }
+  return `<div class="savebar" role="region" aria-label="Save changes"><div class="savebar-in"><span>${esc(label)}</span><div class="btns">${btns}</div></div></div>`;
+}
+function editorPage(title, sub, body){
+  return `<div class="wrap split editor">
+    <div class="col"><section class="card"><div class="card-h"><h1 class="ed-h">${esc(title)}</h1><button class="btn link" data-act="go" data-v="${homeView()}">Back</button></div>${sub ? `<p class="sub" style="margin:0">${sub}</p>` : ''}</section>${body}</div>
+    <aside class="rail"><section class="card" id="impact" aria-live="polite">${impactHtml()}</section></aside>
+  </div>${saveBar()}`;
+}
+const lines = a => esc((a||[]).join('\n'));
+
+/* ============ EDITOR: recipes list ============ */
+function renderRecipesAdmin(){
+  const plan = S.plan;
+  return `<div class="wrap"><section class="card"><div class="card-h"><h1 class="ed-h">Recipes & ingredients</h1><button class="btn link" data-act="go" data-v="dashboard">Back to dashboard</button></div>
+    <p class="sub" style="margin:0">Edit a recipe's ingredients, method and plan steps. Removing a recipe also removes its steps from the plan.</p>${reviewQueue()}
+    <div class="rlist">${plan.recipeOrder.filter(k=>plan.recipes[k]).map(k => { const r = plan.recipes[k], n = plan.tasks.filter(t=>t.r===k).length; return `<div class="ritem"><span class="tile" aria-hidden="true">${esc((r.short||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(r.name)}</b><div class="sub">${n} plan step${n===1?'':'s'} · ${(r.ingredients||[]).reduce((a,g)=>a+g.items.length,0)} ingredients</div></div><div class="btns"><button class="btn small" data-act="editRecipe" data-id="${k}">Edit</button><button class="btn small ghost" data-act="askRemoveRecipe" data-id="${k}">Remove</button></div></div>`; }).join('')}</div>
+    <div class="ritem"><span class="tile" aria-hidden="true">K</span><div><b>Kitchen jobs</b><div class="sub">${plan.tasks.filter(t=>!plan.recipes[t.r]).length} steps not tied to a recipe, like dishes</div></div><div class="btns"><button class="btn small" data-act="editRecipe" data-id="general">Edit</button></div></div>
+    <div><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button></div>
+  </section></div>`;
+}
+
+/* ============ EDITOR: one recipe ============ */
+function taskForm(plan, t){
+  const open = S.openTask === t.id;
+  const tools = plan.kitchen.tools;
+  const mmTasks = plan.tasks.filter(x => x.who==='mm' && x.id !== t.id).sort((a,b)=>sched(plan,a)-sched(plan,b));
+  const P = 't.' + t.id + '.';
+  const summary = t.who==='h' ? `Helper job · needed by ${fmtDT(dueOf(plan,t))}` : `${fmtDT(sched(plan,t))} · ${dur(len(t))}${t.oven ? ` · oven ${t.oven.temp}°F` : ''}`;
+  return `<div class="tform${open?' open':''}">
+    <div><b>${esc(t.title)}</b><div class="sub">${esc(summary)}</div><button class="vi" data-act="openTask" data-id="${t.id}" aria-expanded="${open}"><span class="vi-ic" aria-hidden="true">${open?I_MINUS:I_PLUS}</span>${open?'Close editor':'Edit this step'}</button></div>
+    ${open ? `<div class="fgrid">
+      <label class="field wide">Step name<input data-b="${P}title" value="${esc(t.title)}"></label>
+      <label class="field">Who does it<select data-b="${P}who" data-struct="1"><option value="mm" ${t.who==='mm'?'selected':''}>Cook (host or dish owner)</option><option value="h" ${t.who==='h'?'selected':''}>Helper job</option></select></label>
+      ${t.who==='mm' ? `
+        <label class="field">Day<select data-b="${P}day"><option value="wed" ${t.day==='wed'?'selected':''}>Wednesday</option><option value="thu" ${t.day==='thu'?'selected':''}>Thursday</option></select></label>
+        <label class="field">Start time<input type="time" data-b="${P}t" value="${esc(t.t)}" ${t.final?'disabled':''}></label>
+        ${t.oven ? '' : `<label class="field">Minutes<input type="number" min="0" max="600" data-b="${P}dur" data-type="num" value="${t.dur||0}"></label>`}
+        <label class="field check-field"><input type="checkbox" data-b="${P}ovenOn" data-struct="1" ${t.oven?'checked':''}> Uses the oven</label>
+        ${t.oven ? `
+          <label class="field">Oven °F<input type="number" min="150" max="550" step="5" data-b="${P}oven.temp" data-type="num" value="${t.oven.temp}"></label>
+          <label class="field">Sheet-pan spots<input type="number" min="1" max="8" data-b="${P}oven.slots" data-type="num" value="${t.oven.slots||1}"></label>
+          <label class="field">Bake, min<input type="number" min="1" max="720" data-b="${P}oven.min" data-type="num" value="${t.oven.min}"></label>
+          <label class="field">Bake, max<input type="number" min="1" max="720" data-b="${P}oven.max" data-type="num" value="${t.oven.max}"></label>
+          <label class="field wide">Done when<input data-b="${P}oven.check" value="${esc(t.oven.check||'')}"></label>` : ''}
+        <fieldset class="field wide tools"><legend>Equipment it ties up</legend>${tools.map(x=>`<label class="toolq">${esc(x.name)}<input type="number" min="0" max="9" data-b="${P}uses.${x.id}" data-type="num" value="${(t.uses||{})[x.id]||0}"></label>`).join('')}</fieldset>
+      ` : `
+        <label class="field">Minutes it takes<input type="number" min="1" max="240" data-b="${P}dur" data-type="num" value="${t.dur||5}"></label>
+        <label class="field">Earliest day<select data-b="${P}from.0"><option value="wed" ${(t.from||[])[0]==='wed'?'selected':''}>Wednesday</option><option value="thu" ${(t.from||[])[0]==='thu'?'selected':''}>Thursday</option></select></label>
+        <label class="field">Earliest time<input type="time" data-b="${P}from.1" value="${esc((t.from||[])[1]||'08:00')}"></label>
+        <label class="field wide">Needed for<select data-b="${P}for.id"><option value="">A fixed time</option>${mmTasks.map(x=>`<option value="${x.id}" ${(t.for||{}).id===x.id?'selected':''}>${esc(DAY_SHORT[x.day]+' '+fmtTime(sched(plan,x))+' · '+x.title)}</option>`).join('')}</select></label>
+        ${t.for && t.for.id ? `<label class="field">Minutes before that step<input type="number" min="-60" max="600" data-b="${P}for.before" data-type="num" value="${t.for.before||0}"></label>` : `<label class="field">Needed by<input type="time" data-b="${P}due.1" value="${esc((t.due||[])[1]||'12:00')}"></label>`}
+      `}
+      <label class="field wide">How to do it (one step per line)<textarea rows="4" data-b="${P}steps" data-type="lines">${lines(t.steps)}</textarea></label>
+      <label class="field wide">Notes (one per line)<textarea rows="2" data-b="${P}notes" data-type="lines">${lines(t.notes)}</textarea></label>
+      <div class="btns wide"><button class="btn small ghost" data-act="delTask" data-id="${t.id}">Delete this step</button></div>
+    </div>` : ''}
+  </div>`;
+}
+function renderEditRecipe(){
+  const d = S.draft, plan = d.plan, k = d.recipeId, isGen = k === 'general', mode = d.mode || 'edit';
+  const r = isGen ? {short:'Kitchen jobs', name:'Kitchen jobs'} : plan.recipes[k];
+  if(!r) return renderRecipesAdmin();
+  const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
+  const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><button class="btn small" data-act="addTask">Add a plan step</button></div>
+      <p class="sub" style="margin:0">${mode === 'edit' ? 'The timed steps on the dashboards and the helper list.' : 'Claude wrote these from the recipe and placed them in the day.'} Edit any of them. The panel shows what each change does to the rest of the plan.</p>
+      <div class="tforms">${tasks.length ? tasks.map(t=>taskForm(plan,t)).join('') : '<p class="empty">No plan steps yet.</p>'}</div>
+    </section>`;
+  if(isGen) return editorPage('Kitchen jobs', 'General jobs that aren\'t tied to one recipe, like dishes and setting out serving bowls.', stepsCard);
+  const ov = tasks.filter(t => t.oven && t.who === 'mm');
+  const ovenHtml = `<section class="card oven-card" aria-labelledby="oven-h">
+    <div class="card-h"><h2 id="oven-h">${IC.pot.replace('<svg','<svg class="h-ico"')}Oven</h2><button class="btn small" data-act="addOvenStep">Add an oven step</button></div>
+    ${ov.length ? ov.map(t => { const P = 't.' + t.id + '.'; return `<div class="ovenedit">
+      <b>${esc(t.title)}</b>
+      <div class="ovengrid">
+        <label class="field big-num">Temperature<span class="unit-in"><input type="number" min="150" max="550" step="5" data-b="${P}oven.temp" data-type="num" value="${t.oven.temp}"><i>°F</i></span></label>
+        <label class="field big-num bake">Bake time<span class="unit-in"><input type="number" min="1" max="720" data-b="${P}oven.min" data-type="num" value="${t.oven.min}"><i>to</i><input type="number" min="1" max="720" data-b="${P}oven.max" data-type="num" value="${t.oven.max}"><i>min</i></span></label>
+        <label class="field">Day<select data-b="${P}day"><option value="wed" ${t.day==='wed'?'selected':''}>Wednesday</option><option value="thu" ${t.day==='thu'?'selected':''}>Thursday</option></select></label>
+        <label class="field">Goes in at<input type="time" data-b="${P}t" value="${esc(t.t)}"></label>
+        <label class="field">Sheet-pan spots<input type="number" min="1" max="8" data-b="${P}oven.slots" data-type="num" value="${t.oven.slots||1}"></label>
+        <label class="field">Done when<input data-b="${P}oven.check" value="${esc(t.oven.check||'')}"></label>
+      </div></div>`; }).join('') : '<p class="empty">This dish doesn\'t use the oven.</p>'}
+  </section>`;
+  const people = Object.entries(S.people).filter(([kk,p]) => roleOf(p) !== 'host');
+  const curOwner = 'ownerKey' in d ? d.ownerKey : ownerOf(k);
+  const body = `
+    ${mode === 'review' ? `<section class="card note-card"><b>${esc(personName(S.subs[d.subId] ? S.subs[d.subId].by : ''))} added this dish${d.own ? ' and will make it' : ''}.</b><p class="sub" style="margin:0">Check the oven times and the panel to see how it fits the day. Change anything you like, then accept it.</p></section>` : ''}
+    ${ovenHtml}
+    <section class="card"><h2>Dish</h2><div class="fgrid">
+      <label class="field wide">Name<input data-b="r.name" value="${esc(r.name)}"></label>
+    </div></section>
+    <section class="card"><div class="card-h"><h2>Ingredients</h2><button class="btn small" data-act="addGroup">Add a group</button></div>
+      ${(r.ingredients||[]).map((g,i)=>`<div class="fgrid group"><label class="field wide">Group name<input data-b="ing.${i}.g" value="${esc(g.g)}"></label><label class="field wide">Ingredients (one per line)<textarea rows="${Math.min(10, Math.max(3, g.items.length+1))}" data-b="ing.${i}.items" data-type="lines">${lines(g.items)}</textarea></label><div class="btns wide"><button class="btn small ghost" data-act="delGroup" data-i="${i}">Remove group</button></div></div>`).join('')}
+    </section>
+    <section class="card"><div class="card-h"><h2>Method</h2><button class="btn small" data-act="addMethod">Add a step</button></div>
+      ${(r.steps||[]).length ? '' : '<p class="empty">No method yet.</p>'}
+      ${(r.steps||[]).map((st,i)=>`<div class="fgrid group"><label class="field wide">Step ${i+1} title<input data-b="step.${i}.h" value="${esc(st.h)}"></label><label class="field wide">Instructions<textarea rows="3" data-b="step.${i}.x">${esc(st.x)}</textarea></label><div class="btns wide"><button class="btn small ghost" data-act="delMethod" data-i="${i}">Remove step</button></div></div>`).join('')}
+    </section>
+    ${stepsCard}
+    <details class="card advanced"><summary><h2>Advanced</h2><span class="sub">Short name, quick facts, notes${isHost() ? ', owner' : ''}</span></summary>
+      <div class="fgrid">
+        <label class="field">Short name (for tabs)<input data-b="r.short" maxlength="20" value="${esc(r.short)}"></label>
+        ${isHost() ? `<label class="field">Who's making it<select id="owner-sel"><option value="">The host</option>${people.map(([kk,p]) => `<option value="${kk}" ${curOwner===kk?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
+        <label class="field wide">Quick facts (one per line)<textarea rows="3" data-b="r.meta" data-type="lines">${lines(r.meta)}</textarea></label>
+        <label class="field wide">Notes (one per line)<textarea rows="3" data-b="r.notes" data-type="lines">${lines(r.notes)}</textarea></label>
+      </div>
+    </details>
+    ${mode === 'edit' && isHost() ? `<section class="card"><button class="btn ghost" data-act="askRemoveRecipe" data-id="${k}">Remove this recipe</button></section>` : ''}`;
+  const title = mode === 'new' ? 'Review your dish' : mode === 'review' ? 'Review: ' + r.short : 'Edit: ' + r.short;
+  const sub = mode === 'new' ? 'Step 2 of 2. Check what Claude wrote, especially the oven, then save.' : mode === 'review' ? '' : 'Changes stay in this editor until you save.';
+  return editorPage(title, sub, body);
+}
+
+/* ============ EDITOR: kitchen ============ */
+function renderKitchen(){
+  const plan = S.draft.plan;
+  const body = `<section class="card"><h2>Oven</h2><div class="fgrid">
+      <label class="field">Sheet-pan spots in the oven<input type="number" min="1" max="12" data-b="k.ovenSpots" data-type="num" value="${plan.kitchen.ovenSpots}"></label></div></section>
+    <section class="card"><div class="card-h"><h2>Burners, pots, pans and tools</h2><button class="btn small" data-act="addTool">Add one</button></div>
+      <p class="sub" style="margin:0">Only count burners that are useful for cooking. Set something to 0 to see which steps would be stuck without it.</p>
+      <div class="toolrows">${plan.kitchen.tools.map((x,i)=>{ const n = plan.tasks.filter(t=>(t.uses||{})[x.id]).length; return `<div class="toolrow"><label class="field">Name<input data-b="tool.${i}.name" value="${esc(x.name)}"></label><label class="field">How many<input type="number" min="0" max="20" data-b="tool.${i}.count" data-type="num" value="${x.count}"></label><div class="sub">${n} step${n===1?'':'s'} use it</div><button class="btn small ghost" data-act="delTool" data-i="${i}">Remove</button></div>`; }).join('')}</div>
+    </section>`;
+  return editorPage('Kitchen setup', 'Your oven space and equipment. The plan checks every step against this.', body);
+}
+
+/* ============ EDITOR: dinner time ============ */
+function renderDinner(){
+  const d = S.draft;
+  const body = `<section class="card"><div class="fgrid">
+      <label class="field">Dinner on the table, Thursday<input type="time" id="dinner-time" data-dinner="1" value="${esc(d.plan.dinner)}"></label>
+      <label class="field check-field wide"><input type="checkbox" id="dinner-shift" data-dinner="1" ${d.shift!==false?'checked':''}> Move Thursday's afternoon steps with it (recommended)</label>
+    </div>
+    <p class="sub" style="margin:0">Morning steps stay put either way. Helper deadlines follow the steps they're for.</p></section>`;
+  return editorPage('Dinner time', 'Change your goal and see how the afternoon shifts.', body);
+}
+function applyDinner(){
+  const d = S.draft, v = document.getElementById('dinner-time').value, shift = document.getElementById('dinner-shift').checked;
+  if(!v) return;
+  d.shift = shift;
+  const plan = clone(d.base), delta = toMin(v) - toMin(d.base.dinner);
+  plan.dinner = v;
+  if(shift && delta){
+    for(const t of plan.tasks){
+      if(t.day === 'thu' && toMin(t.t) >= 12*60) t.t = fromMin(toMin(t.t) + delta);
+      if(t.who === 'h' && t.from && t.from[0]==='thu' && toMin(t.from[1]) >= 12*60) t.from = ['thu', fromMin(toMin(t.from[1]) + delta)];
+      if(t.due && t.due[0]==='thu' && toMin(t.due[1]) >= 12*60) t.due = ['thu', fromMin(toMin(t.due[1]) + delta)];
+    }
+  }
+  d.plan = plan;
+}
+
+/* ============ LANE LAYOUT (estimates text height so nothing is cut off) ============ */
+function estLines(text, widthPx, charPx){
+  const cpl = Math.max(6, Math.floor((widthPx - 22) / charPx));
+  let lines = 1, cur = 0;
+  for(const w of String(text).split(/\s+/)){ const L = w.length; if(cur === 0) cur = L; else if(cur + 1 + L <= cpl) cur += 1 + L; else { lines++; cur = L; } while(cur > cpl){ lines++; cur -= cpl; } }
+  return lines;
+}
+function layoutLane(items, laneW, ppm, heightFor, startM){
+  // Columns come from real time overlap only; long text pushes later blocks in the same column down.
+  const sorted = items.slice().sort((a,b) => a.s - b.s);
+  const cols = [], colOf = {};
+  for(const x of sorted){ const e = x.s + Math.max(x.d, 15); let c = cols.findIndex(end => end <= x.s); if(c < 0){ c = cols.length; cols.push(e); } else cols[c] = e; colOf[x.id] = c; }
+  const n = Math.max(1, cols.length), colW = laneW / n - 4;
+  const place = {}, bottoms = new Array(n).fill(-Infinity);
+  let bottom = 0;
+  for(const x of sorted){
+    const c = colOf[x.id], h = Math.max(x.d * ppm, heightFor(x, colW));
+    const y = Math.max((x.s - startM) * ppm, bottoms[c] + 6);
+    bottoms[c] = y + h; bottom = Math.max(bottom, y + h);
+    place[x.id] = {col:c, y, h};
+  }
+  return {place, n, bottom};
+}
+
+/* ============ EDITOR: schedule (drag and drop) ============ */
+const PPM = 2; // pixels per minute
+function laneOf(t){ return t.oven ? 'oven' : (Object.values(t.uses||{}).some(q=>q>0) ? 'tools' : 'hands'); }
+function renderSchedule(){
+  const plan = S.draft.plan;
+  const day = S.schedDay || (now() < at('thu','00:00') ? 'wed' : 'thu');
+  S.schedDay = day;
+  const tasks = plan.tasks.filter(t => t.who==='mm' && t.day===day && !t.final);
+  const issues = planIssues(plan), bad = new Set(issues.flatMap(i => i.ids));
+  let startM = 7*60, endM = day==='thu' ? toMin(plan.dinner) + 60 : 22*60;
+  for(const t of tasks){ const s = toMin(t.t); startM = Math.min(startM, Math.floor(s/60)*60); endM = Math.max(endM, Math.ceil((s+len(t))/60)*60); }
+  const lanes = [['oven','Oven'],['tools','Stove & tools'],['hands','Hands-on']];
+  const LANE_W = 235;
+  const lay = {};
+  for(const [k] of lanes){
+    const items = tasks.filter(t => laneOf(t)===k).map(t => ({id:t.id, s:toMin(t.t), d:len(t), title:t.title}));
+    const hf = (it, w) => 18 + 10 + 17 + estLines(it.title, w, 7.8) * 17 + 10;
+    let L = layoutLane(items, LANE_W, PPM, hf, startM);
+    const w = Math.max(LANE_W, L.n * 150);
+    if(w !== LANE_W) L = layoutLane(items, w, PPM, hf, startM);
+    L.w = w; lay[k] = L;
+  }
+  endM = Math.min(endM, 24*60);
+  const H = Math.max((endM - startM) * PPM, ...Object.values(lay).map(l => l.bottom + 12));
+  const lanesHtml = lanes.map(([k,label]) => {
+    const items = tasks.filter(t => laneOf(t)===k);
+    const L = lay[k], n = L.n;
+    return `<div class="lane" data-lane="${k}"><div class="lane-h">${label}</div><div class="lane-body" style="height:${H}px">
+      ${items.map(t => { const s = toMin(t.t), pl = L.place[t.id];
+        return `<div class="blk${bad.has(t.id)?' bad':''}" data-id="${t.id}" style="top:${pl.y}px;min-height:${pl.h}px;left:calc(${pl.col*100/n}% + 2px);width:calc(${100/n}% - 4px);--h:${hueOf(plan,t.r)}">
+          <button class="grip" data-grip="${t.id}" aria-label="Move ${esc(t.title)}. Use arrow keys to shift by 5 minutes.">• • •</button>
+          <button class="blk-body" data-act="editTime" data-id="${t.id}"><span class="blk-time tnum">${fmtTime(at(day,t.t))}</span><span class="blk-t">${esc(t.title)}</span></button>
+        </div>`; }).join('')}
+    </div></div>`;
+  }).join('');
+  const hours = []; for(let m = startM; m <= endM; m += 60) hours.push(`<div class="hr" style="top:${(m-startM)*PPM}px"><span>${fmtTime(at(day, fromMin(m)))}</span></div>`);
+  const body = `<section class="card">
+    <div class="card-h"><div class="seg" role="group" aria-label="Day"><button data-act="schedDay" data-v="wed" aria-pressed="${day==='wed'}">Wednesday</button><button data-act="schedDay" data-v="thu" aria-pressed="${day==='thu'}">Thursday</button></div><span class="sub">Drag a step by its top strip to move it · tap it to set an exact time</span></div>
+    <div class="timeline" style="height:${H+40}px;grid-template-columns:60px minmax(${lanes.reduce((a,[k])=>a+lay[k].w,0)+16}px,1fr)"><div class="hours">${hours.join('')}</div><div class="lanes" style="grid-template-columns:${lanes.map(([k])=>`minmax(${lay[k].w}px,${lay[k].w}fr)`).join(' ')}">${lanesHtml}</div></div>
+    <p class="sub" style="margin:0">Helper jobs aren't on the timeline. Their deadlines follow the step they're for, listed under "Steps that moved".</p>
+  </section>`;
+  return editorPage('Schedule', 'Move your steps and watch conflicts and helper deadlines update.', body);
+}
+
+/* ============ HELPER VIEW ============ */
+function jobCard(t, mode){
+  const plan = S.plan, s = prog(t.id), due = dueOf(plan,t), from = fromOf(plan,t), nowMs = now();
+  const open = mode === 'mine' ? !S.collapsed.has(t.id) : S.expanded.has(t.id);
+  let btns = '';
+  if(mode === 'mine') btns = `<button class="btn primary" data-act="toggle" data-id="${t.id}">Mark done</button><button class="btn ghost small" data-act="release" data-id="${t.id}">Give it back</button>`;
+  else if(mode === 'done') btns = `<button class="btn small" data-act="toggle" data-id="${t.id}">Undo</button>`;
+  else btns = `<button class="btn primary" data-act="claim" data-id="${t.id}">I'll do it</button>`;
+  const startNote = !s.done && from > nowMs ? `<div class="sub">Can start ${esc(fmtRel(from))}</div>` : '';
+  return `<div class="job${mode==='mine'?' mine':''}${mode==='done'?' done':''}">
+    <div class="trow"><div class="tmeta"><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span><span class="chip">about ${t.dur} min</span></div></div>
+    <h3>${esc(t.title)}</h3>
+    ${mode==='done' ? '' : viLink(t.id, open, mode==='mine')}
+    ${mode==='done' ? `<div class="sub">Done ${s.doneAt ? esc(fmtRel(s.doneAt)) : ''}</div>` : neededBy(due, false)}
+    ${startNote}
+    ${open && mode!=='done' ? `<ol>${t.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${t.notes&&t.notes.length?`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}` : ''}
+    <div class="btns">${btns}</div>
+  </div>`;
+}
+function renderHelper(){
+  const plan = S.plan, me = S.key, nowMs = now();
+  const hj = plan.tasks.filter(t => t.who==='h');
+  const mine = hj.filter(t => prog(t.id).assignee === me);
+  const doing = mine.filter(t => !isDone(t)).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  const did = hj.filter(t => isDone(t) && (prog(t.id).assignee === me || prog(t.id).doneBy === me));
+  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee && dueOf(plan,t) > nowMs - 30*60000);
+  const ready = open.filter(t => fromOf(plan,t) <= nowMs + 30*60000).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  const later = open.filter(t => fromOf(plan,t) > nowMs + 30*60000).sort((a,b)=>fromOf(plan,a)-fromOf(plan,b));
+  return `<div class="wrap">
+    <section class="card" aria-labelledby="mine-h"><div class="card-h"><h2 id="mine-h">Your jobs</h2><span class="sub">${doing.length} to do · ${did.length} done</span></div>
+      <p class="sub" style="margin:0">Pick a prep job, follow the steps, and tap Mark done when you finish. Bethany handles the oven and the seasoning.</p>
+      ${doing.length ? doing.map(t=>jobCard(t,'mine')).join('') : '<p class="empty">You haven\'t picked a job yet. Choose one below.</p>'}</section>
+    <section class="card" aria-labelledby="open-h"><div class="card-h"><h2 id="open-h">Open jobs</h2><span class="sub">${open.length} open</span></div>
+      <div class="group-h">Ready now</div>
+      ${ready.length ? `<div class="joblist">${ready.map(t=>jobCard(t,'open')).join('')}</div>` : `<p class="empty">${later.length ? 'Nothing needs doing right this minute. You can claim a job that opens later.' : 'Every job is claimed or done. Thank you!'}</p>`}
+      ${later.length ? `<div class="group-h">Coming up</div><div class="joblist">${later.map(t=>jobCard(t,'open')).join('')}</div>` : ''}
+    </section>
+    ${did.length ? `<section class="card"><h2>Finished</h2>${did.map(t=>jobCard(t,'done')).join('')}</section>` : ''}
+  </div>`;
+}
+
+/* ============ ROLES ============ */
+function keyFor(name){ const sl = String(name||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'').slice(0,24) || 'me'; return (S.baseKey || 'local') + '-' + sl; }
+function roleOf(me){ return me ? (me.role === 'mm' ? 'host' : me.role) : null; }
+const isHost = () => roleOf(S.me) === 'host';
+function dishesOf(key){ const p = S.people[key]; return (p && Array.isArray(p.dishes)) ? p.dishes : []; }
+function myDishes(){ return S.key ? dishesOf(S.key).filter(r => S.plan.recipes[r]) : []; }
+function ownerOf(r){ for(const [k,p] of Object.entries(S.people)) if(Array.isArray(p.dishes) && p.dishes.includes(r)) return k; return null; }
+function canEditRecipe(r){ return isHost() || myDishes().includes(r); }
+function myTask(t){ return myDishes().includes(t.r) || prog(t.id).assignee === S.key; }
+function mySubs(){ return Object.entries(S.subs).filter(([,x]) => x.by === S.key); }
+/* host · owner (owns at least one dish, or picked "dish owner") · helper */
+function effRole(){
+  const r = roleOf(S.me);
+  if(r === 'host') return 'host';
+  if(r === 'owner' || myDishes().length || mySubs().some(([,x]) => x.own)) return 'owner';
+  return 'h';
+}
+function homeView(){ const r = effRole(); return r === 'host' ? 'dashboard' : r === 'owner' ? 'mine' : 'helper'; }
+
+/* ============ SHARED CARDS ============ */
+function alertsCard(al){
+  return al.length ? `<section class="card" aria-labelledby="al-h"><div class="card-h"><h2 id="al-h">Heads up</h2><span class="sub">${al.length} flag${al.length>1?'s':''}</span></div>
+    <div class="alerts">${al.slice(0,8).map(a=>`<div class="alert ${a.lv}"><p>${esc(a.text)}</p>${a.act?`<button class="btn small" data-act="${a.act}" data-id="${a.id||''}" data-v="${a.v||''}">${esc(a.btn)}</button>`:''}</div>`).join('')}</div></section>` : '';
+}
+function ovenCard(){
+  const plan = S.plan, nowMs = now(), ov = ovenState(), spots = plan.kitchen.ovenSpots;
+  const slotsHtml = [];
+  for(const t of ov.items) for(let i=0;i<(t.oven.slots||1);i++) slotsHtml.push(`<div class="slot full${ov.slots>spots?' over':''}"><b>${esc(recipeOf(plan,t.r).short)}</b><span>${t.oven.temp}°F</span></div>`);
+  while(slotsHtml.length < spots) slotsHtml.push('<div class="slot">Empty</div>');
+  const nx = nextOvenTask();
+  const ovenItems = ov.items.map(t => {
+    const s = prog(t.id), el = (nowMs - s.inOvenAt)/60000, pct = Math.min(100, el/t.oven.max*100), left = t.oven.min - el;
+    return `<div class="ovenitem">
+      <div class="card-h"><b>${esc(t.title)}</b><span class="timer">${left > 0 ? dur(Math.ceil(left))+' left' : (el>=t.oven.max?'Check now':'Check it')}</span></div>
+      <div class="meter"><i class="${el>=t.oven.max?'over':''}" style="width:${pct}%"></i></div>
+      <div class="sub tnum">In oven since ${fmtTime(s.inOvenAt)} · ready ${fmtTime(s.inOvenAt+t.oven.min*60000)}${t.oven.max!==t.oven.min?'–'+fmtTime(s.inOvenAt+t.oven.max*60000):''}${t.oven.mid && !s.midDone ? ' · '+esc(t.oven.mid.label.toLowerCase())+' at '+fmtTime(s.inOvenAt+t.oven.mid.at*60000) : ''}</div>
+      <div class="btns"><button class="btn heat small" data-act="out" data-id="${t.id}">Take out of oven</button>${t.oven.mid && !s.midDone ? `<button class="btn small" data-act="mid" data-id="${t.id}">${esc(t.oven.mid.label.split(' the ')[0])}: done</button>`:''}<button class="btn small ghost" data-act="ovenTime" data-id="${t.id}">Fix time it went in</button></div>
+    </div>`;
+  }).join('');
+  return `<section class="card" aria-labelledby="ov-h">
+    <div class="card-h"><h2 id="ov-h">Oven</h2><span class="pill ${ov.items.length?'heat':'neutral'}">${ov.temps.length ? ov.temps.map(x=>x+'°F').join(' + ') : 'Empty'} · ${ov.slots}/${spots} spots</span></div>
+    <div class="slots" style="grid-template-columns:repeat(${Math.min(spots,2)},1fr)">${slotsHtml.join('')}</div>
+    ${ovenItems}
+    ${nx ? `<div class="sub">Next in: <b>${esc(nx.title)}</b> · ${esc(fmtRel(sched(plan,nx,true)))}, ${nx.oven.temp}°F</div>` : ''}
+  </section>`;
+}
+function planCard(tasks, title){
+  const plan = S.plan, nowMs = now();
+  const day = S.planDay || (nowMs < at('thu','00:00') ? 'wed' : 'thu');
+  const dayTasks = tasks.filter(t => t.day === day).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
+  const hr = t => new Date(displayTime(plan,t)).getHours();
+  const groups = [['Morning', t=>hr(t)<12], ['Afternoon', t=>hr(t)>=12&&hr(t)<17], ['Evening', t=>hr(t)>=17]];
+  const mode = S.planMode || 'list';
+  const listHtml = groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t)).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>';
+  return `<section class="card" aria-labelledby="pl-h">
+    <div class="card-h"><h2 id="pl-h">${esc(title)}</h2><div class="seg" role="group" aria-label="View as"><button data-act="planMode" data-v="list" aria-pressed="${mode==='list'}">${IC.list}<span>List</span></button><button data-act="planMode" data-v="timeline" aria-pressed="${mode==='timeline'}">${IC.tl}<span>Timeline</span></button></div></div>
+    <div class="card-h"><div class="seg" role="group" aria-label="Day"><button data-act="planDay" data-v="wed" aria-pressed="${day==='wed'}">Wednesday</button><button data-act="planDay" data-v="thu" aria-pressed="${day==='thu'}">Thursday</button></div><span class="sub">${DAY_LABEL[day]}</span></div>
+    ${mode === 'timeline' ? gantt(tasks, day) : listHtml}
+  </section>`;
+}
+
+/* ============ TIMELINE (time-focused Gantt) ============ */
+const JOB_TYPES = {
+  oven:{label:'Oven', color:'#E95322'},
+  tools:{label:'Stove & tools', color:'#D9A21B'},
+  hands:{label:'Hands-on', color:'#391713'},
+  help:{label:'Helper job', color:'#3F76A6'}
+};
+function jobType(t){ return t.who === 'h' ? 'help' : laneOf(t); }
+function gantt(tasks, day){
+  const plan = S.plan, nowMs = now(), H = 3600000;
+  const startOf = t => { if(t.who === 'h'){ const d = displayTime(plan, t); return dayOf(d) === day ? d : at(day, t.t); } return sched(plan, t, true); };
+  const lenOf = t => (t.who === 'h' ? (t.dur||5) : len(t)) * 60000;
+  const all = tasks.filter(t => t.day === day && !t.final);
+  let a0 = at(day, '08:00'), a1 = day === 'thu' ? dinnerAt(plan) + 30*60000 : at(day, '21:00');
+  for(const t of all){ a0 = Math.min(a0, Math.floor(startOf(t)/H)*H); a1 = Math.max(a1, Math.ceil((startOf(t)+lenOf(t))/H)*H); }
+  const zoom = S.zoom || 'day';
+  if(zoom === 'am') a1 = Math.max(a0 + H, at(day, '12:00'));
+  if(zoom === 'pm') a0 = Math.min(a1 - H, at(day, '12:00'));
+  const span = a1 - a0, pct = ms => Math.max(0, Math.min(100, (ms - a0) / span * 100));
+  const list = all.filter(t => startOf(t) + lenOf(t) > a0 && startOf(t) < a1).sort((a,b) => startOf(a) - startOf(b));
+  const step = span > 9*H ? 2*H : H;
+  const ticks = []; for(let x = Math.ceil(a0/step)*step; x <= a1; x += step){ const h = new Date(x).getHours(); ticks.push(`<span class="g-tick" style="left:${pct(x)}%">${h%12||12}${h<12?'a':'p'}</span>`); }
+  const grid = ticks.map(t => t.replace('g-tick','g-grid').replace(/>[^<]*</,'><')).join('');
+  // Oven strip: every oven step on this day (shared by everyone), packed into rows
+  const ovenSteps = plan.tasks.filter(t => t.oven && t.day === day && !t.final).map(t => ({t, s: startOf(t), e: startOf(t) + lenOf(t)})).filter(x => x.e > a0 && x.s < a1).sort((a,b) => a.s - b.s);
+  const rowsEnd = []; const ovenBars = ovenSteps.map(x => { let r = rowsEnd.findIndex(e => e <= x.s); if(r < 0){ r = rowsEnd.length; rowsEnd.push(x.e); } else rowsEnd[r] = x.e; const w = pct(x.e) - pct(x.s);
+    return `<span class="g-obar${isDone(x.t)?' done':''}${inOven(x.t)?' live':''}" style="left:${pct(x.s)}%;width:${Math.max(w,1.2)}%;top:${r*16}px" title="${esc(recipeOf(plan,x.t.r).short)} ${x.t.oven.temp}°F">${w > 9 ? x.t.oven.temp+'°' : ''}</span>`; }).join('');
+  const ovenMin = Math.round(ovenSteps.reduce((n,x) => n + (Math.min(x.e,a1) - Math.max(x.s,a0)), 0) / 60000);
+  // Busiest stretch: most steps going at once
+  let peak = 0, peakAt = null;
+  for(const t of list){ const s = startOf(t), c = list.filter(o => startOf(o) <= s && s < startOf(o) + Math.max(lenOf(o), 60000)).length; if(c > peak){ peak = c; peakAt = s; } }
+  const first = list[0], last = list.reduce((m,t) => Math.max(m, startOf(t)+lenOf(t)), 0);
+  const rows = list.map(t => {
+    const s = prog(t.id), done = !!s.done, io = inOven(t), st0 = startOf(t), ty = JOB_TYPES[jobType(t)];
+    const late = !done && !active(t) && t.who==='mm' && !t.optional && nowMs - sched(plan,t,true) > 10*60000;
+    const when = t.who === 'h' ? dueLabel(plan, t) : (lenOf(t) ? `${fmtTime(st0)}–${fmtTime(st0+lenOf(t))}` : fmtTime(st0));
+    const who = t.who === 'h' ? (s.assignee ? personName(s.assignee) : 'Open') : (ownerOf(t.r) ? personName(ownerOf(t.r)) : '');
+    const state = done ? 'Done' : io ? `In oven since ${fmtTime(s.inOvenAt)}` : started(t) ? `Started ${fmtTime(s.startedAt)}` : late ? 'Late' : '';
+    const meta = [when, recipeOf(plan,t.r).short, t.oven ? t.oven.temp+'°F' : '', who, state].filter(Boolean).join(' · ');
+    const w = pct(st0 + lenOf(t)) - pct(st0);
+    const label = done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`;
+    return `<li class="g-row${done?' done':''}${io?' live':''}${late?' late':''}" style="--tc:${ty.color}">
+      <div class="g-head"><button class="check sm${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
+        <div class="g-txt"><span class="g-title">${esc(t.title)}</span><span class="g-meta">${esc(meta)}</span></div>
+        <button class="vi g-vi" data-act="taskModal" data-id="${t.id}" aria-label="View instructions for ${esc(t.title)}"><span class="vi-ic" aria-hidden="true">${I_PLUS}</span>Instructions</button></div>
+      <div class="g-track"><span class="g-bar" style="left:${pct(st0)}%;width:${Math.max(w, 1.4)}%"></span></div>
+    </li>`;
+  }).join('');
+  const nowIn = nowMs > a0 && nowMs < a1 ? `<span class="g-now" style="left:${pct(nowMs)}%"><b>${esc(fmtTime(nowMs))}</b></span>` : '';
+  const dz = dinnerAt(plan), dinIn = day === 'thu' && dz > a0 && dz <= a1 ? `<span class="g-dinner" style="left:${pct(dz)}%"><b>Dinner</b></span>` : '';
+  const legend = `<div class="legend">${Object.values(JOB_TYPES).map(x => `<span class="lg"><i style="background:${x.color}"></i>${x.label}</span>`).join('')}</div>`;
+  const zoomSeg = `<div class="seg small" role="group" aria-label="Zoom"><button data-act="zoom" data-v="day" aria-pressed="${zoom==='day'}">Whole day</button><button data-act="zoom" data-v="am" aria-pressed="${zoom==='am'}">Morning</button><button data-act="zoom" data-v="pm" aria-pressed="${zoom==='pm'}">Afternoon</button></div>`;
+  const stats = list.length ? `<div class="g-stats"><div><b>${esc(fmtTime(startOf(first)))}–${esc(fmtTime(last))}</b><span>First step to last</span></div><div><b>${dur(ovenMin)}</b><span>Oven in use</span></div><div><b>${peak} at once</b><span>Busiest, around ${esc(fmtTime(peakAt))}</span></div></div>` : '';
+  return `${zoomSeg}${stats}${legend}
+    <div class="gantt">
+      <div class="g-axis">${ticks.join('')}</div>
+      <div class="g-body">
+        <div class="g-gridlines" aria-hidden="true">${grid}${dinIn}${nowIn}</div>
+        ${ovenSteps.length ? `<div class="g-oven"><span class="g-olabel">Oven</span><div class="g-otrack" style="height:${rowsEnd.length*16}px">${ovenBars}</div></div>` : ''}
+        <ol class="g-rows">${rows || '<li class="empty">Nothing in this part of the day.</li>'}</ol>
+      </div>
+    </div>`;
+}
+
+/* ============ HOST DASHBOARD ============ */
+function renderDashboard(){
+  const plan = S.plan, nowMs = now();
+  const pr = progress(), pw = progress(t=>t.day==='wed'), pt = progress(t=>t.day==='thu');
+  const pj = projection(), al = liveAlerts(), dz = dinnerAt(plan);
+  const status = pj.allDone ? '<span class="pill good">Everything\'s done. Enjoy!</span>'
+    : pj.slipMin > 0 ? `<span class="pill ${pj.slipMin>=15?'crit':'warn'}">${dur(pj.slipMin)} behind your ${esc(fmtTime(dz))} goal</span>` : `<span class="pill good">On track for ${esc(fmtTime(dz))}</span>`;
+  const until = dz - nowMs; let countdown = '';
+  if(until > 0){ const d = Math.floor(until/86400000), h = Math.floor(until%86400000/3600000), m = Math.floor(until%3600000/60000); countdown = `Dinner is ${d? d+' day'+(d>1?'s':'')+' ':''}${h? h+' hr ':''}${d?'':m+' min '}away`; }
+  const hero = `<section class="card hero" aria-labelledby="eta-h">
+    <div class="hero-top"><div><div class="eta-label" id="eta-h">Dinner on the table</div><div class="eta tnum">${pj.allDone ? 'Done' : esc(fmtTime(pj.eta))}</div></div><div>${status}</div></div>
+    <div class="prog" role="progressbar" aria-valuenow="${pr.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Overall progress"><i style="width:${pr.pct}%"></i></div>
+    <div class="prog-row"><span><b>${pr.pct}%</b> of the cooking done · ${pr.nd} of ${pr.n} steps</span><span>${esc(countdown)}</span></div>
+    <div class="daysplit">
+      <div class="mini"><span>Wednesday</span><b class="tnum">${pw.nd}/${pw.n}</b><div class="prog"><i style="width:${pw.pct}%"></i></div></div>
+      <div class="mini"><span>Thursday</span><b class="tnum">${pt.nd}/${pt.n}</b><div class="prog"><i style="width:${pt.pct}%"></i></div></div>
+    </div>
+  </section>`;
+  const upcoming = plan.tasks.filter(t => t.who==='mm' && !isDone(t) && !inOven(t) && !t.optional).sort((a,b)=>sched(plan,a,true)-sched(plan,b,true)).slice(0,4);
+  const nextHtml = `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2><span class="sub">${upcoming[0] ? esc(relTo(sched(plan,upcoming[0],true))) : ''}</span></div>
+    <div class="tasks">${upcoming.length ? upcoming.map((t,i)=>taskRow(t,{withDay:true, open:i===0})).join('') : '<p class="empty">Nothing left on the list.</p>'}</div></section>`;
+  const people = Object.entries(S.people).filter(([k,p]) => roleOf(p) !== 'host');
+  const hj = plan.tasks.filter(t => t.who==='h');
+  const hDone = hj.filter(isDone).length, hClaimed = hj.filter(t => !isDone(t) && prog(t.id).assignee).length;
+  const hp = hj.length ? Math.round(hDone/hj.length*100) : 0;
+  const helpersHtml = `<section class="card" aria-labelledby="hp-h"><div class="card-h"><h2 id="hp-h">Helpers & dish owners</h2><button class="btn link" data-act="go" data-v="helpers">See all</button></div>
+    <div class="prog" aria-label="Helper jobs done"><i style="width:${hp}%"></i></div>
+    <div class="sub">${hDone} of ${hj.length} helper jobs done · ${hClaimed} in progress · ${hj.length-hDone-hClaimed} open</div>
+    ${people.length ? `<div class="hlist">${people.map(([k,p]) => personRow(k,p)).join('')}</div>` : '<p class="empty">Nobody else has signed in yet.</p>'}
+  </section>`;
+  return `<div class="wrap split"><div class="col">${hero}${alertsCard(al)}${nextHtml}${planCard(plan.tasks, 'Full plan')}</div><aside class="rail">${ovenCard()}${helpersHtml}</aside></div>`;
+}
+function personRow(k, p){
+  const plan = S.plan, hj = plan.tasks.filter(t => t.who==='h');
+  const doing = hj.filter(t => prog(t.id).assignee===k && !isDone(t));
+  const dishes = dishesOf(k).filter(r => plan.recipes[r]).map(r => plan.recipes[r].short);
+  const did = plan.tasks.filter(t => isDone(t) && (prog(t.id).doneBy===k)).length;
+  return `<div class="hrow"><div class="avatar" style="background:${colorFor(k)}" aria-hidden="true">${esc((p.name||'?').slice(0,1).toUpperCase())}</div>
+    <div><b>${esc(p.name)}</b> <span class="sub">· ${did} done</span>${dishes.length ? `<p>Owns: ${dishes.map(esc).join(', ')}</p>` : ''}<p>${doing.length ? 'On: '+doing.map(t=>esc(t.title)).join('; ') : 'Not on a helper job right now'}</p></div></div>`;
+}
+
+/* ============ DISH OWNER DASHBOARD ============ */
+function renderOwner(){
+  const plan = S.plan, nowMs = now(), mine = myDishes();
+  const tasks = plan.tasks.filter(myTask);
+  const cook = tasks.filter(t => t.who==='mm' && mine.includes(t.r) && !t.optional && !t.final);
+  const p = (() => { let n=0, nd=0, tot=0, dn=0; for(const t of tasks){ if(t.optional) continue; n++; tot+=weight(t); if(isDone(t)){ nd++; dn+=weight(t); } } return {n, nd, pct: tot ? Math.round(dn/tot*100) : 0}; })();
+  let finish = 0, slip = 0;
+  const dz0 = dinnerAt(plan);
+  for(const t of cook){ if(t.day !== 'thu') continue; finish = Math.max(finish, endOf(plan, t)); if(!isDone(t) && sched(plan,t,true) >= dz0 - 150*60000){ const s = prog(t.id), sc = sched(plan,t,true); const late = t.oven && s.inOvenAt ? s.inOvenAt - sc : s.startedAt ? s.startedAt - sc : (sc < nowMs ? nowMs - sc : 0); slip = Math.max(slip, late); } }
+  const dz = dinnerAt(plan), eta = (finish || dz) + Math.max(0, slip);
+  const pend = mySubs();
+  const names = mine.map(r => plan.recipes[r].short);
+  const hero = mine.length ? `<section class="card hero" aria-labelledby="eta-h">
+    <div class="hero-top"><div><div class="eta-label" id="eta-h">${esc(names.join(', '))} ready by</div><div class="eta tnum">${cook.length && cook.every(isDone) ? 'Done' : esc(fmtTime(eta))}</div></div><div>${eta > dz ? `<span class="pill crit">${dur(mins(eta-dz))} after dinner</span>` : `<span class="pill good">In time for dinner at ${esc(fmtTime(dz))}</span>`}</div></div>
+    <div class="prog" aria-label="Your progress"><i style="width:${p.pct}%"></i></div>
+    <div class="prog-row"><span><b>${p.pct}%</b> done · ${p.nd} of ${p.n} steps</span></div>
+  </section>` : '';
+  const pendHtml = pend.length ? `<section class="card"><h2>Waiting for the host</h2>${pend.map(([id,x]) => `<div class="ritem"><span class="tile" aria-hidden="true">${esc((x.recipe.short||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(x.recipe.name)}</b><div class="sub">Sent ${esc(fmtRel(x.at))}. It joins the plan once the host accepts it.</div></div><span></span></div>`).join('')}</section>` : '';
+  const empty = !mine.length && !pend.length ? `<section class="card"><h2>No dishes yet</h2><p class="sub" style="margin:0">Pick a dish you're making from the sign-in screen, or add a new one.</p><div class="btns"><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button><button class="btn" data-act="switch">Pick a dish</button></div></section>` : '';
+  const al = liveAlerts(myTask);
+  const upcoming = tasks.filter(t => !isDone(t) && !inOven(t) && !t.optional && t.who==='mm').sort((a,b)=>sched(plan,a,true)-sched(plan,b,true)).slice(0,3);
+  const nextHtml = upcoming.length ? `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2><span class="sub">${esc(relTo(sched(plan,upcoming[0],true)))}</span></div>
+    <div class="tasks">${upcoming.map((t,i)=>taskRow(t,{withDay:true, open:i===0})).join('')}</div></section>` : '';
+  return `<div class="wrap split"><div class="col">${empty}${hero}${pendHtml}${alertsCard(al)}${nextHtml}${tasks.length ? planCard(tasks, 'Your plan') : ''}</div><aside class="rail">${ovenCard()}</aside></div>`;
+}
+
+/* ============ ADD A DISH (step 1) ============ */
+let sampleFn;
+async function getSample(){
+  if(sampleFn !== undefined) return sampleFn;
+  const C = window.claude;
+  if(!C || typeof C.use !== 'function'){ sampleFn = null; return null; }
+  try{ sampleFn = await C.use('sample'); }catch(e){ sampleFn = null; }
+  return sampleFn;
+}
+function renderAddDish(){
+  if(S.noAI) return renderImportDish();
+  const A = S.add || (S.add = {mode:'text', text:'', files:[], own: !isHost(), busy:false, status:'', error:''});
+  const photo = A.mode === 'photo';
+  return `<div class="wrap"><section class="card add-card">
+    <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
+    <p class="sub" style="margin:0">Paste a recipe or add a photo of it. Claude reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
+    <div class="seg" role="group" aria-label="How to add it"><button data-act="addMode" data-v="text" aria-pressed="${!photo}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo or screenshot</button></div>
+    ${photo ? `<label class="field" for="add-files">Recipe photos (up to 4)<input id="add-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
+      ${A.files.length ? `<p class="sub" style="margin:0">${A.files.length} photo${A.files.length>1?'s':''} ready: ${A.files.map(f=>esc(f.name)).join(', ')}</p>` : ''}`
+      : `<label class="field" for="add-text">Recipe text<textarea id="add-text" rows="12" placeholder="Paste the title, ingredients and instructions">${esc(A.text)}</textarea></label>`}
+    <div class="note"><b>Found it on a website?</b> Copy the recipe from the page and paste it here, or take a screenshot and use Photo. This page can't open links itself.</div>
+    ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
+    ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
+    ${A.busy ? `<div class="thinking" role="status"><span class="spinner" aria-hidden="true"></span><span>${esc(A.status || 'Reading the recipe…')}</span></div>` : ''}
+    <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : `<button class="btn primary" data-act="readRecipe">Read the recipe</button>`}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Enter it by hand instead</button></div>
+  </section></div>`;
+}
+function importPrompt(){
+  return recipePrompt('', true).replace('in the attached photo(s)', 'I give you (pasted text, a photo, or a link you can open)').replace(/\n*$/, '') +
+    `\n\nWhen you reply, give only the JSON so I can paste it into my planner. Here is the recipe:\n`;
+}
+function renderImportDish(){
+  const A = S.add || (S.add = {code:'', own: !isHost(), error:'', showPrompt:false});
+  return `<div class="wrap"><section class="card add-card">
+    <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
+    <p class="sub" style="margin:0">Let Claude do the work: it writes the steps and fits the dish into the cooking schedule. You'll review everything before it's saved.</p>
+    <ol class="steps import-steps">
+      <li><b>Copy the planner prompt</b><div class="btns"><button class="btn primary small" data-act="copyPrompt">Copy prompt</button><button class="btn link" data-act="showPrompt">${A.showPrompt ? 'Hide it' : 'Show it instead'}</button></div>
+        ${A.showPrompt ? `<label class="field" for="prompt-box">Select all and copy<textarea id="prompt-box" rows="6" readonly>${esc(importPrompt())}</textarea></label>` : ''}</li>
+      <li><b>Paste it into Claude, then add your recipe</b><span>Paste the recipe text, attach a photo, or paste a link to the recipe page.</span></li>
+      <li><b>Paste Claude's answer here</b>
+        <label class="field" for="import-code">Claude's answer<textarea id="import-code" rows="8" placeholder='Starts with {"name": …'>${esc(A.code||'')}</textarea></label></li>
+    </ol>
+    ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
+    ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
+    <div class="btns"><button class="btn primary" data-act="importDish">Import dish</button><button class="btn ghost" data-act="manualRecipe">Enter it by hand instead</button></div>
+  </section></div>`;
+}
+function importDish(){
+  const A = S.add; A.error = '';
+  const el = document.getElementById('import-code'); A.code = el ? el.value : A.code;
+  const own = document.getElementById('add-own'); if(own) A.own = own.checked;
+  const t = String(A.code||''), a = t.indexOf('{'), b = t.lastIndexOf('}');
+  let j = null; try{ j = JSON.parse(t.slice(a, b + 1)); }catch(e){}
+  if(!j || typeof j !== 'object'){ A.error = 'That doesn\'t look like Claude\'s planner answer. Copy its whole reply, starting with {"name".'; render(); return; }
+  if(j.error){ A.error = 'Claude said: ' + j.error; render(); return; }
+  const d = draftFromAI(j);
+  S.draft = {kind:'recipe', mode:'new', plan:d.plan, base:clone(S.plan), recipeId:d.recipeId, own: isHost() ? false : A.own, ownerKey: isHost() ? null : (A.own ? S.key : null)};
+  S.add = null; S.openTask = null; S.view = 'editRecipe'; render(); window.scrollTo(0,0);
+}
+
+function scheduleSummary(plan, skipRecipe){
+  return plan.tasks.filter(t => t.who==='mm' && !t.final && t.r !== skipRecipe).sort((a,b)=>sched(plan,a)-sched(plan,b)).map(t => {
+    const s = sched(plan,t), e = endOf(plan,t), u = Object.entries(t.uses||{}).filter(([,q])=>q>0).map(([k,q])=>k+(q>1?'×'+q:'')).join(',');
+    return `- ${t.day} ${hm(s)}-${hm(e)}${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.slots||1} spot(s)` : ''}${u ? ' uses '+u : ''} | ${recipeOf(plan,t.r).short}: ${t.title}`;
+  }).join('\n');
+}
+function kitchenSummary(plan){ return `Oven: ${plan.kitchen.ovenSpots} sheet-pan spots, one temperature at a time.\nTools (id: name, count): ` + plan.kitchen.tools.map(x => `${x.id}: ${x.name}, ${x.count}`).join('; '); }
+function recipePrompt(text, hasImages){
+  const plan = S.plan;
+  return `You are planning a home Thanksgiving dinner. Read the recipe ${hasImages ? 'in the attached photo(s)' : 'below'} and turn it into structured data plus a cooking schedule that fits around the existing plan.
+
+DINNER: Thursday at ${plan.dinner} (24h). Cooking happens on Wednesday ("wed") and Thursday ("thu").
+KITCHEN: ${kitchenSummary(plan)}
+EXISTING COOK STEPS (day start-end, oven, tools | dish: step):
+${scheduleSummary(plan) || '(none yet)'}
+
+RULES
+- Split the recipe into timed cook steps (who "mm") done by the dish's cook, and simple prep jobs (who "h") for helpers: chopping, peeling, measuring, grating, zesting, setting out ingredients, lining pans, washing up. Helpers never do oven work, stovetop cooking, tasting or seasoning decisions.
+- Do on Wednesday whatever the recipe allows to be made ahead (doughs, fillings, sauces, chilling, braises, pies). Do day-of steps on Thursday so the dish is ready, hot or fresh at dinner.
+- The dish must be ready by dinner; its last steps end at or just before ${plan.dinner} Thursday.
+- Every oven step needs temp (F), min and max minutes, sheet-pan spots (a casserole dish or pie counts as 1) and how to tell it's done. Do not overlap existing oven steps that use a different temperature, and never need more than ${plan.kitchen.ovenSpots} spots at once.
+- Do not book a tool beyond its count at the same time as existing steps. Use the tool ids given.
+- Helper jobs: "for" is the exact title of the cook step they prepare for, "before" is how many minutes before that step it must be done, "from" is the earliest day and time they can start.
+- Step instructions are short, imperative lines someone can follow at the counter. Keep the recipe's quantities.
+- Times are 24h "HH:MM" in multiples of 5. Minutes are whole numbers.
+
+Reply with only JSON in this shape:
+{"name":"Full dish name","short":"1-2 word name","meta":["yield","oven temp and time","make-ahead note"],"notes":["anything the cook must not miss"],"ingredients":[{"g":"group name","items":["1 cup flour"]}],"steps":[{"h":"short title","x":"instructions"}],"tasks":[{"title":"","who":"mm","day":"thu","t":"14:00","dur":20,"steps":["line"],"uses":{"bigPot":1},"oven":{"temp":350,"min":40,"max":45,"slots":1,"check":"golden and set"},"for":null,"before":0,"from":["thu","08:00"]}]}
+Use "oven": null for steps that don't use the oven. If this isn't a recipe, reply {"error":"what's wrong, in one short sentence"}.
+${hasImages ? '' : `\nRECIPE:\n"""\n${text.slice(0, 60000)}\n"""`}`;
+}
+const str = v => (v == null ? '' : String(v)).trim();
+const arr = v => Array.isArray(v) ? v.map(str).filter(Boolean) : [];
+const clampInt = (v, lo, hi, d) => { const n = Math.round(Number(v)); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+const validHM = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(str(v)); if(!m) return null; const h = +m[1], mi = +m[2]; return h < 24 && mi < 60 ? fromMin(h*60 + Math.round(mi/5)*5) : null; };
+function aiTasks(list, k, plan){
+  const toolIds = new Set(plan.kitchen.tools.map(x => x.id)), byTitle = {};
+  const items = (Array.isArray(list) ? list : []).slice(0, 40).map((x, i) => { const id = 'x-' + k.slice(2) + '-' + i + Math.random().toString(36).slice(2,5); byTitle[str(x.title).toLowerCase()] = id; return {x, id}; });
+  let prevCook = null;
+  return items.map(({x, id}) => {
+    const day = x.day === 'wed' ? 'wed' : 'thu', t = validHM(x.t) || '12:00';
+    const base = {id, r:k, day, t, title: str(x.title) || 'Step', steps: arr(x.steps)};
+    if(x.who === 'h'){
+      const d = clampInt(x.dur, 1, 240, 10), f = x.for && byTitle[str(x.for).toLowerCase()];
+      const from = Array.isArray(x.from) && validHM(x.from[1]) ? [x.from[0] === 'wed' ? 'wed' : 'thu', validHM(x.from[1])] : [day, '08:00'];
+      return Object.assign(base, {who:'h', dur:d, from}, f ? {for:{id:f, before: clampInt(x.before, -60, 600, 0)}} : {due:[day, fromMin(toMin(t) + d)]});
+    }
+    const uses = {}; for(const [kk, q] of Object.entries(x.uses || {})) if(toolIds.has(kk) && Number(q) > 0) uses[kk] = Math.min(9, Math.round(Number(q)));
+    let oven = null;
+    if(x.oven && Number(x.oven.temp)){ oven = {temp: clampInt(x.oven.temp, 150, 550, 350), slots: clampInt(x.oven.slots, 1, 8, 1), min: clampInt(x.oven.min, 1, 720, 30), check: str(x.oven.check)}; oven.max = Math.max(oven.min, clampInt(x.oven.max, 1, 720, oven.min)); }
+    const needs = prevCook ? [prevCook] : []; prevCook = id;
+    return Object.assign(base, {who:'mm', dur: oven ? oven.min : clampInt(x.dur, 0, 600, 15), uses, needs}, oven ? {oven} : {});
+  });
+}
+function draftFromAI(j){
+  const k = rid('r-'), p = clone(S.plan), name = str(j.name) || 'New dish';
+  p.recipes[k] = {name, short: str(j.short).slice(0, 20) || name.split(/\s+/).slice(-1)[0], meta: arr(j.meta), notes: arr(j.notes),
+    ingredients: (Array.isArray(j.ingredients) ? j.ingredients : []).map(g => ({g: str(g && g.g) || 'Ingredients', items: arr(g && g.items)})),
+    steps: (Array.isArray(j.steps) ? j.steps : []).map(s => ({h: str(s && s.h), x: str(s && s.x)}))};
+  p.recipeOrder.push(k);
+  p.tasks.push(...aiTasks(j.tasks, k, p));
+  return {plan: p, recipeId: k};
+}
+async function readRecipe(){
+  const A = S.add; A.error = '';
+  const ta = document.getElementById('add-text'); if(ta) A.text = ta.value;
+  const own = document.getElementById('add-own'); if(own) A.own = own.checked;
+  const photo = A.mode === 'photo';
+  if(photo ? !A.files.length : A.text.trim().length < 40){ A.error = photo ? 'Add a photo of the recipe first.' : 'Paste the recipe, including its ingredients and instructions.'; render(); return; }
+  const sample = await getSample();
+  if(!sample){ A.error = 'Reading recipes needs Claude, which isn\'t available in this view. You can enter the dish by hand instead.'; render(); return; }
+  A.busy = true; A.status = 'Reading the recipe and fitting it into the day. This can take a minute.'; A.ctl = new AbortController(); render();
+  try{
+    const j = await sample.json(recipePrompt(A.text, photo), Object.assign({signal: A.ctl.signal, modelTier:'default'}, photo ? {images: A.files.slice(0,4)} : {}));
+    if(!j || typeof j !== 'object' || j.error){ A.error = (j && j.error) ? `Claude couldn't use that: ${j.error}` : 'Claude couldn\'t read a recipe there. Try pasting the text.'; return; }
+    const d = draftFromAI(j);
+    S.draft = {kind:'recipe', mode:'new', plan:d.plan, base:clone(S.plan), recipeId:d.recipeId, own: isHost() ? false : A.own, ownerKey: isHost() ? null : (A.own ? S.key : null)};
+    S.add = null; S.openTask = null; S.view = 'editRecipe'; window.scrollTo(0,0);
+  }catch(e){
+    const c = e && e.code;
+    A.error = c === 'cancelled' ? '' : c === 'not_granted' || c === 'sampling_disabled' ? 'Claude isn\'t allowed here, so the recipe can\'t be read automatically. You can enter it by hand.'
+      : c === 'rate_limited' ? 'Claude is busy or you\'ve hit a usage limit. Try again in a little while.'
+      : c === 'image_rejected' ? 'That photo couldn\'t be used. Try a clearer JPEG or PNG.'
+      : c === 'invalid_json' ? 'Claude\'s answer came back incomplete. Try again, or paste less text.'
+      : c === 'prompt_too_large' ? 'That recipe is too long. Paste just the ingredients and instructions.'
+      : 'Something went wrong reading the recipe. Try again.';
+  }finally{ A.busy = false; render(); }
+}
+function manualRecipe(){
+  const k = rid('r-'), p = clone(S.plan);
+  p.recipes[k] = {name:'New dish', short:'New dish', meta:[], notes:[], ingredients:[{g:'Ingredients', items:[]}], steps:[]};
+  p.recipeOrder.push(k);
+  const own = S.add ? S.add.own : !isHost();
+  S.draft = {kind:'recipe', mode:'new', plan:p, base:clone(S.plan), recipeId:k, own: isHost() ? false : own, ownerKey: isHost() ? null : (own ? S.key : null)};
+  S.add = null; S.view = 'editRecipe'; render(); window.scrollTo(0,0);
+}
+async function fixWithAI(){
+  const d = S.draft; if(!d) return;
+  const sample = await getSample();
+  if(!sample){ toast('Claude isn\'t available in this view.'); return; }
+  const issues = planIssues(d.plan).map(i => '- ' + i.text).join('\n');
+  const mine = d.plan.tasks.filter(t => t.r === d.recipeId && t.who === 'mm').map(t => `- id ${t.id} | ${t.day} ${t.t} for ${len(t)} min${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.slots||1} spot(s)` : ''} | ${t.title}`).join('\n');
+  const prompt = `Reschedule this dish's cook steps so they fit around the other steps with no conflicts. Keep its own order, keep make-ahead steps on Wednesday where possible, and finish by Thursday ${d.plan.dinner}.
+KITCHEN: ${kitchenSummary(d.plan)}
+OTHER COOK STEPS (fixed):
+${scheduleSummary(d.plan, d.recipeId)}
+THIS DISH'S STEPS (you may move these):
+${mine}
+CONFLICTS NOW:
+${issues}
+Reply with only JSON: {"moves":[{"id":"step id","day":"wed|thu","t":"HH:MM"}]} listing only the steps you move.`;
+  S.fixing = true; render();
+  try{
+    const j = await sample.json(prompt, {modelTier:'default'});
+    let n = 0;
+    for(const m of (j && Array.isArray(j.moves) ? j.moves : [])){ const t = findTask(d.plan, str(m.id)); const tv = validHM(m.t); if(t && t.r === d.recipeId && t.who === 'mm' && tv){ t.day = m.day === 'wed' ? 'wed' : 'thu'; t.t = tv; n++; } }
+    toast(n ? `Moved ${n} step${n>1?'s':''}. Check the panel to see what changed.` : 'Claude didn\'t find a better time. Try moving steps yourself.');
+  }catch(e){ toast(e && e.code === 'rate_limited' ? 'Claude is busy. Try again shortly.' : 'Couldn\'t get suggestions right now.'); }
+  finally{ S.fixing = false; render(); }
+}
+
+/* ============ SAVE / SUBMIT A DRAFT ============ */
+function setOwner(rk, key){
+  for(const [k,p] of Object.entries(S.people)) if(Array.isArray(p.dishes) && p.dishes.includes(rk) && k !== key) savePerson(k, {dishes: p.dishes.filter(r => r !== rk)});
+  if(key){ const cur = dishesOf(key); if(!cur.includes(rk)) savePerson(key, {dishes: [...cur, rk]}); }
+}
+function commitDraft(){
+  const d = S.draft; if(!d) return null;
+  const mode = d.mode || 'edit';
+  if(mode === 'new' && !isHost()){
+    const r = d.plan.recipes[d.recipeId], tasks = d.plan.tasks.filter(t => t.r === d.recipeId);
+    const id = rid('s-'), sub = {recipeId:d.recipeId, recipe:r, tasks, by:S.key, own:!!d.own, at:Date.now()};
+    S.subs[id] = sub; persist('submissions/' + id, sub);
+    S.draft = null; toast('Sent to the host. It joins the plan once they accept it.');
+    return homeView();
+  }
+  savePlan(clone(d.plan));
+  if(mode === 'review'){
+    const sub = S.subs[d.subId];
+    if(sub && sub.own) setOwner(d.recipeId, sub.by);
+    removeSub(d.subId);
+    S.draft = null; toast('Accepted. It\'s in the plan now.');
+    return 'recipes';
+  }
+  if('ownerKey' in d && (mode === 'new' || d.ownerChanged)) setOwner(d.recipeId, d.ownerKey);
+  if(mode === 'new'){ S.draft = null; S.recipeTab = d.recipeId; toast('Added to the plan.'); return isHost() ? 'recipes' : homeView(); }
+  d.base = clone(d.plan); toast('Saved. Everyone now sees the updated plan.');
+  return null;
+}
+function removeSub(id){
+  delete S.subs[id];
+  if(db){ db.doc('submissions/' + id).delete().catch(() => {}); } else lsSet('tg-subs', S.subs);
+}
+function openReview(id){
+  const sub = S.subs[id]; if(!sub) return;
+  const p = clone(S.plan); p.recipes[sub.recipeId] = clone(sub.recipe);
+  if(!p.recipeOrder.includes(sub.recipeId)) p.recipeOrder.push(sub.recipeId);
+  p.tasks = p.tasks.filter(t => t.r !== sub.recipeId).concat(clone(sub.tasks));
+  S.draft = {kind:'recipe', mode:'review', plan:p, base:clone(S.plan), recipeId:sub.recipeId, subId:id, own:sub.own};
+  closeModal(); S.openTask = null; S.view = 'editRecipe'; render(); window.scrollTo(0,0);
+}
+function reviewQueue(){
+  const subs = Object.entries(S.subs);
+  if(!subs.length) return '';
+  return `<section class="card review-q"><div class="card-h"><h2>Waiting for your review</h2><span class="pill warn">${subs.length}</span></div>
+    ${subs.map(([id,x]) => `<div class="ritem"><span class="tile" aria-hidden="true">${esc((x.recipe.short||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(x.recipe.name)}</b><div class="sub">From ${esc(personName(x.by))}${x.own ? ', who will make it' : ''} · ${x.tasks.length} steps</div></div><div class="btns"><button class="btn small primary" data-act="reviewSub" data-id="${id}">Review</button></div></div>`).join('')}
+  </section>`;
+}
+
+/* ============ ROOT RENDER ============ */
+function render(){
+  if(drag){ return; }
+  const app = document.getElementById('app');
+  const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#app') ? captureFocus() : null;
+  const landing = S.ready && (!S.me || S.view === 'landing');
+  const role = S.ready && !landing ? effRole() : null;
+  let body;
+  if(!S.ready) body = '<div class="wrap"><section class="card"><h2>Loading the plan…</h2><p class="sub" style="margin:0">Getting the latest progress.</p></section></div>';
+  else if(landing) body = renderLanding();
+  else if(S.view === 'addDish') body = renderAddDish();
+  else if(S.view === 'editRecipe' && S.draft) body = renderEditRecipe();
+  else if(role === 'host') body = ({dashboard:renderDashboard, recipes:renderRecipes, helpers:renderHelpersAdmin, recipesAdmin:renderRecipesAdmin,
+    kitchen:renderKitchen, dinner:renderDinner, schedule:renderSchedule}[S.view] || renderDashboard)();
+  else if(role === 'owner') body = ({mine:renderOwner, recipes:renderRecipes, help:renderHelper}[S.view] || renderOwner)();
+  else body = renderHelper();
+  const nav = role === 'host' || role === 'owner';
+  document.body.classList.toggle('has-nav', !!nav);
+  if(!S.ready) app.innerHTML = `<div class="band"><h1 class="band-t">Hello!</h1></div><main class="sheet-main">${body}</main>`;
+  else if(landing) app.innerHTML = body;
+  else app.innerHTML = header() + `<main class="sheet-main">${banner()}${body}</main>` + (nav ? bottomNav() : '');
+  if(focus) restoreFocus(focus);
+  const dlg = document.querySelector('.dialog[data-kind="task"]');
+  if(dlg && S.modalTask) dlg.innerHTML = taskModalHtml(S.modalTask);
+}
+function captureFocus(){ const el = document.activeElement; let s = null, e = null; try{ s = el.selectionStart; e = el.selectionEnd; }catch(_){} return el.dataset && el.dataset.b ? {b: el.dataset.b, s, e} : (el.id ? {id: el.id, s, e} : null); }
+function restoreFocus(f){
+  const el = f.b ? document.querySelector(`[data-b="${CSS.escape(f.b)}"]`) : document.getElementById(f.id);
+  if(el){ el.focus(); try{ if(f.s != null) el.setSelectionRange(f.s, f.e); }catch(e){} }
+}
+function refreshImpact(){
+  const box = document.getElementById('impact'); if(box) box.innerHTML = impactHtml();
+  const sb = document.querySelector('.savebar'); if(sb) sb.outerHTML = saveBar();
+}
+
+/* ============ MODALS ============ */
+function openModal(kind, id){
+  const m = document.getElementById('modal'); let inner = '';
+  if(kind === 'menu'){
+    const role = effRole(), mm = role === 'host';
+    const mi = (act, v, icon, label, sub) => `<button class="menu-item" data-act="${act}" ${v?`data-v="${v}"`:''}><span class="mi-ico">${icon}</span><span><b>${label}</b>${sub?`<span>${sub}</span>`:''}</span></button>`;
+    const items = mm ? [
+      mi('go','addDish',IC.plus2,'Add a dish','Paste a recipe or add a photo'),
+      mi('go','recipesAdmin',IC.book,'Recipes & ingredients','Edit, review or remove recipes'),
+      mi('go','schedule',IC.cal,'Schedule','Drag steps to new times'),
+      mi('go','dinner',IC.clock,'Dinner time','Change your goal'),
+      mi('go','kitchen',IC.pot,'Kitchen setup','Oven space, burners and tools'),
+      mi('go','helpers',IC.clip,'Helper jobs','Progress and who does what'),
+      mi('pretend','',IC.replay,'Rehearse', S.pretend ? 'Pretend time is on' : 'Preview a pretend time'),
+      mi('askReset','',IC.trash,'Clear all progress','Uncheck everything for everyone')
+    ].join('') : [mi('go','addDish',IC.plus2,'Add a dish','Paste a recipe or add a photo')].join('');
+    m.innerHTML = `<div class="scrim drawer" data-act="scrim"><div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+      <div class="drawer-me"><div class="avatar" aria-hidden="true">${esc((S.me && S.me.name || '?').slice(0,1).toUpperCase())}</div><div><b id="dlg-h">${esc(S.me ? S.me.name : 'Menu')}</b><span>${mm ? 'Host' : role === 'owner' ? 'Dish owner' : 'Helper'}</span></div><button class="drawer-close" data-act="close" aria-label="Close menu">×</button></div>
+      ${items ? `<div class="menu">${items}</div>` : ''}
+      <div class="menu menu-foot">${mi('switch','',IC.out,'Switch user','Sign in as someone else on this device')}</div>
+    </div></div>`;
+    const f = m.querySelector('.menu-item'); if(f) f.focus();
+    return;
+  } else if(kind === 'task'){
+    S.modalTask = id;
+    m.innerHTML = `<div class="scrim" data-act="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h" data-kind="task">${taskModalHtml(id)}</div></div>`;
+    const f = m.querySelector('button'); if(f) f.focus();
+    return;
+  } else if(kind === 'ovenTime'){
+    const t = findTask(S.plan, id), s = prog(id);
+    inner = `<h2 id="dlg-h">${esc(t.title)}</h2>
+      <label class="field" for="oven-time">What time did it go in?<input id="oven-time" type="time" value="${hm(s.inOvenAt || now())}"></label>
+      <div class="sub">Oven at ${t.oven.temp}°F. Ready in ${rangeDur(t.oven.min, t.oven.max)}.</div>
+      <div class="btns"><button class="btn heat" data-act="saveOven" data-id="${id}">Save</button><button class="btn ghost" data-act="close">Cancel</button></div>`;
+  } else if(kind === 'pretend'){
+    const d = new Date(S.pretend ? now() : at('thu','15:20'));
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${hm(d.getTime())}`;
+    inner = `<h2 id="dlg-h">Pretend it's…</h2>
+      <label class="field" for="pretend-time">Date and time<input id="pretend-time" type="datetime-local" value="${val}" min="2026-11-24T00:00" max="2026-11-27T00:00"></label>
+      <div class="sub">The clock keeps running from there. Only this device sees it.</div>
+      <div class="btns"><button class="btn primary" data-act="savePretend">Use this time</button>${S.pretend?'<button class="btn" data-act="realtime">Back to real time</button>':''}<button class="btn ghost" data-act="close">Cancel</button></div>`;
+  } else if(kind === 'reset'){
+    inner = `<h2 id="dlg-h">Clear all progress?</h2><p style="margin:0">This unchecks every step, clears oven times and releases every helper job, for everyone. Your recipes and schedule stay.</p>
+      <div class="btns"><button class="btn primary" data-act="doReset">Clear everything</button><button class="btn ghost" data-act="close">Keep it</button></div>`;
+  } else if(kind === 'removeRecipe'){
+    const r = S.plan.recipes[id] || (S.draft && S.draft.plan.recipes[id]);
+    inner = `<h2 id="dlg-h">Remove ${esc(r ? r.name : 'this recipe')}?</h2><p style="margin:0">Its ingredients, method and every plan step for it are removed for everyone.</p>
+      <div class="btns"><button class="btn primary" data-act="removeRecipe" data-id="${id}">Remove recipe</button><button class="btn ghost" data-act="close">Keep it</button></div>`;
+  } else if(kind === 'leave'){
+    inner = `<h2 id="dlg-h">Discard your changes?</h2><p style="margin:0">You have edits you haven't saved.</p>
+      <div class="btns"><button class="btn primary" data-act="saveAndGo" data-v="${id}">Save and continue</button><button class="btn" data-act="discardAndGo" data-v="${id}">Discard</button><button class="btn ghost" data-act="close">Keep editing</button></div>`;
+  } else if(kind === 'editTime'){
+    const t = findTask(S.draft.plan, id);
+    inner = `<h2 id="dlg-h">${esc(t.title)}</h2>
+      <div class="fgrid"><label class="field">Day<select id="et-day"><option value="wed" ${t.day==='wed'?'selected':''}>Wednesday</option><option value="thu" ${t.day==='thu'?'selected':''}>Thursday</option></select></label>
+      <label class="field">Start time<input id="et-time" type="time" value="${esc(t.t)}"></label>
+      ${t.oven ? '' : `<label class="field">Minutes<input id="et-dur" type="number" min="0" max="600" value="${t.dur||0}"></label>`}</div>
+      <div class="btns"><button class="btn primary" data-act="applyTime" data-id="${id}">Apply</button><button class="btn ghost" data-act="close">Cancel</button></div>`;
+  }
+  m.innerHTML = `<div class="scrim" data-act="scrim"><div class="dialog${kind==='menu'?' sheet':''}" role="dialog" aria-modal="true" aria-labelledby="dlg-h">${inner}</div></div>`;
+  const f = m.querySelector('input,select,.menu-item,button'); if(f) f.focus();
+}
+function closeModal(){ document.getElementById('modal').innerHTML = ''; S.modalTask = null; }
+function taskModalHtml(id){
+  const t = findTask(S.plan, id); if(!t) return '';
+  return `<div class="card-h"><h2 id="dlg-h">${esc(t.title)}</h2><button class="btn small ghost" data-act="close">Close</button></div>
+    ${t.who==='h' ? neededBy(dueOf(S.plan,t), isDone(t)) : ''}
+    <div class="tasks">${taskRow(t, {forceOpen:true, withDay:true})}</div>`;
+}
+let toastTimer;
+function toast(msg){ const el = document.getElementById('toast'); el.innerHTML = `<div class="toast">${esc(msg)}</div>`; clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ el.innerHTML=''; }, 3200); }
+
+/* ============ NAVIGATION ============ */
+function go(v, force){
+  closeModal();
+  const editorViews = ['editRecipe','kitchen','dinner','schedule'];
+  if(!force && editorViews.includes(S.view) && S.draft && (dirty() || S.draft.mode === 'new') && S.draft.mode !== 'review' && v !== S.view){ openModal('leave', v); return; }
+  if(v === 'kitchen'){ startDraft('kitchen'); }
+  else if(v === 'dinner'){ startDraft('dinner', {shift:true}); }
+  else if(v === 'schedule'){ startDraft('schedule'); }
+  else if(!editorViews.includes(v)) S.draft = null;
+  if(v === 'addDish') S.add = null;
+  S.view = v; render(); window.scrollTo(0,0);
+}
+function openRecipeEditor(k){
+  closeModal();
+  if(['editRecipe','kitchen','dinner','schedule'].includes(S.view) && dirty() && !(S.view==='editRecipe' && S.draft.recipeId===k)){ S.pendingRecipe = k; openModal('leave', 'editRecipe'); return; }
+  startDraft('recipe', {recipeId:k}); S.openTask = null; S.view = 'editRecipe'; render(); window.scrollTo(0,0);
+}
+
+/* ============ DRAFT BINDING ============ */
+function setPath(obj, parts, val){
+  let o = obj;
+  for(let i=0;i<parts.length-1;i++){ const p = parts[i]; if(o[p] == null) o[p] = /^\d+$/.test(parts[i+1]) ? [] : {}; o = o[p]; }
+  o[parts[parts.length-1]] = val;
+}
+function applyBind(el){
+  const d = S.draft; if(!d) return false;
+  const path = el.dataset.b, type = el.dataset.type;
+  let val = el.type === 'checkbox' ? el.checked : el.value;
+  if(type === 'num'){ val = Number(val); if(!isFinite(val)) return false; }
+  if(type === 'lines') val = String(val).split('\n').map(s=>s.trim()).filter(Boolean);
+  const plan = d.plan, parts = path.split('.');
+  if(parts[0] === 'r'){ setPath(plan.recipes[d.recipeId], parts.slice(1), val); }
+  else if(parts[0] === 'ing'){ setPath(plan.recipes[d.recipeId].ingredients, parts.slice(1), val); }
+  else if(parts[0] === 'step'){ setPath(plan.recipes[d.recipeId].steps, parts.slice(1), val); }
+  else if(parts[0] === 'k'){ setPath(plan.kitchen, parts.slice(1), val); }
+  else if(parts[0] === 'tool'){ setPath(plan.kitchen.tools, parts.slice(1), val); }
+  else if(parts[0] === 't'){
+    const t = findTask(plan, parts[1]); if(!t) return false;
+    const f = parts.slice(2);
+    if(f[0] === 'ovenOn'){ if(val){ t.oven = {temp:350, slots:1, min: t.dur||30, max:(t.dur||30)+5, check:''}; } else { t.dur = t.oven ? t.oven.min : t.dur; delete t.oven; } }
+    else if(f[0] === 'who'){
+      if(val === 'h' && t.who !== 'h'){ t.who = 'h'; delete t.oven; t.uses = {}; t.from = t.from || [t.day, '08:00']; if(!t.for && !t.due) t.due = [t.day, t.t]; }
+      else if(val === 'mm' && t.who !== 'mm'){ const d0 = dueOf(plan, t) - (t.dur||5)*60000; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); }
+    }
+    else if(f[0] === 'for' && f[1] === 'id'){ if(val){ t.for = {id: val, before: (t.for && t.for.before) || 0}; delete t.due; } else { const due = dueOf(plan,t); t.due = [dayOf(due), hm(due)]; delete t.for; } }
+    else if(f[0] === 'due'){ t.due = [t.due ? t.due[0] : t.day, val]; }
+    else if(f[0] === 'oven' && (f[1] === 'min' || f[1] === 'max')){ setPath(t, f, val); if(t.oven.max < t.oven.min) t.oven[f[1]==='min'?'max':'min'] = val; t.dur = t.oven.min; }
+    else setPath(t, f, val);
+  }
+  return true;
+}
+
+/* ============ EVENTS ============ */
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset && el.dataset.b && !el.dataset.struct){ if(applyBind(el)) refreshImpact(); }
+  if(el.dataset && el.dataset.dinner){ applyDinner(); refreshImpact(); }
+  if(el.id === 'land-name') S.landingName = el.value;
+  if(el.name === 'role'){ S.landingRole = el.value; render(); }
+  if(el.name === 'dish'){ S.landingDishes = [...document.querySelectorAll('input[name="dish"]:checked')].map(x => x.value); el.closest('.dish').classList.toggle('on', el.checked); }
+  if(el.name === 'newdish'){ S.landingNew = el.checked; el.closest('.dish').classList.toggle('on', el.checked); }
+  if(el.id === 'add-text' && S.add) S.add.text = el.value;
+  if(el.id === 'import-code' && S.add) S.add.code = el.value;
+  if(el.id === 'add-own' && S.add) S.add.own = el.checked;
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if(el.id === 'add-files' && S.add){ S.add.files = [...el.files].slice(0,4); S.add.error = ''; render(); return; }
+  if(el.id === 'owner-sel' && S.draft){ S.draft.ownerKey = el.value || null; S.draft.ownerChanged = true; refreshImpact(); return; }
+  if(el.dataset && el.dataset.b && (el.dataset.struct || el.tagName === 'SELECT')){ if(applyBind(el)) render(); }
+});
+document.addEventListener('submit', e => {
+  if(e.target.id !== 'land-form') return;
+  e.preventDefault();
+  const role = (document.querySelector('input[name="role"]:checked') || {}).value;
+  const name = document.getElementById('land-name').value.trim().slice(0,30);
+  const err = document.getElementById('land-err');
+  if(!name){ err.textContent = 'Enter your name so others know who\'s who.'; document.getElementById('land-name').focus(); return; }
+  if(!role){ err.textContent = 'Choose how you\'re pitching in.'; return; }
+  const dishes = role === 'owner' ? [...document.querySelectorAll('input[name="dish"]:checked')].map(x => x.value) : [];
+  const addNew = role === 'owner' && !!(document.querySelector('input[name="newdish"]') || {}).checked;
+  if(role === 'owner' && !dishes.length && !addNew){ err.textContent = 'Pick at least one dish, or choose "Add a new dish".'; return; }
+  S.key = keyFor(name);
+  S.me = {key: S.key, name, role}; lsSet('tg-me', S.me);
+  savePerson(S.key, {name, role, dishes, joinedAt: (S.people[S.key] && S.people[S.key].joinedAt) || Date.now()});
+  S.landingRole = null; S.landingName = null; S.landingDishes = null; S.landingNew = false;
+  if(addNew){ S.add = null; S.view = 'addDish'; } else S.view = homeView();
+  render(); window.scrollTo(0,0);
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  const act = el.dataset.act, id = el.dataset.id, v = el.dataset.v;
+  if(act === 'scrim'){ if(e.target === el) closeModal(); return; }
+  const plan = S.plan;
+  switch(act){
+    case 'go': go(v); break;
+    case 'menu': openModal('menu'); break;
+    case 'switch': closeModal(); S.view = 'landing'; S.draft = null; render(); window.scrollTo(0,0); break;
+    case 'recipeTab': S.recipeTab = v; render(); break;
+    case 'planDay': S.planDay = v; render(); break;
+    case 'planMode': S.planMode = v; lsSet('tg-planmode', v); render(); break;
+    case 'taskModal': openModal('task', id); break;
+    case 'hjFilter': S.hjFilter = v; render(); break;
+    case 'expand': { const set = el.dataset.auto ? S.collapsed : S.expanded; set.has(id) ? set.delete(id) : set.add(id); render(); break; }
+    case 'toggle': {
+      const t = findTask(plan, id), s = prog(id);
+      if(s.done) saveTask(id, {done:false, doneAt:null, outAt:null});
+      else saveTask(id, Object.assign({done:true, doneAt:now(), doneBy:S.key}, t && t.oven ? {outAt: now()} : {}));
+      break;
+    }
+    case 'start': saveTask(id, {startedAt: now()}); break;
+    case 'unstart': saveTask(id, {startedAt: null}); break;
+    case 'ovenTime': openModal('ovenTime', id); break;
+    case 'saveOven': { const val = document.getElementById('oven-time').value; closeModal(); if(val){ const [h,m] = val.split(':').map(Number); const d = new Date(now()); d.setHours(h, m, 0, 0); saveTask(id, {inOvenAt: d.getTime(), done:false}); } break; }
+    case 'unoven': saveTask(id, {inOvenAt:null, midDone:false}); break;
+    case 'out': saveTask(id, {done:true, outAt:now(), doneAt:now(), doneBy:S.key}); break;
+    case 'mid': saveTask(id, {midDone:true}); break;
+    case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key}); toast('It\'s yours. The steps are under "Your jobs".'); break; }
+    case 'release': saveTask(id, {assignee:null}); break;
+    case 'toMM': { const p = clone(plan), t = findTask(p, id); const d0 = dueOf(p, t) - (t.dur||5)*60000; t.wasHelper = {from:t.from||null, for:t.for||null, due:t.due||null}; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); savePlan(p); if(prog(id).assignee) saveTask(id, {assignee:null}); toast('Moved to your plan.'); break; }
+    case 'toHelper': { const p = clone(plan), t = findTask(p, id); const w = t.wasHelper || {}; t.who = 'h'; delete t.oven; t.uses = {}; t.from = w.from || [t.day, '08:00']; if(w.for) t.for = w.for; else t.due = w.due || [t.day, t.t]; delete t.wasHelper; savePlan(p); toast('Back on the helper list.'); break; }
+    case 'editTask': { const t = findTask(plan, id); if(t){ openRecipeEditor(plan.recipes[t.r] ? t.r : 'general'); if(S.view === 'editRecipe'){ S.openTask = id; render(); } } break; }
+    case 'editRecipe': openRecipeEditor(id); break;
+    case 'addRecipe': go('addDish'); break;
+    case 'askRemoveRecipe': openModal('removeRecipe', id); break;
+    case 'removeRecipe': { const p = clone(plan); delete p.recipes[id]; p.recipeOrder = p.recipeOrder.filter(k=>k!==id); p.tasks = p.tasks.filter(t=>t.r!==id); for(const t of p.tasks){ if(t.for && !findTask(p, t.for.id)){ const d = dueOf(plan, t); t.due = [dayOf(d), hm(d)]; delete t.for; } if(t.needs) t.needs = t.needs.filter(n => findTask(p, n)); } S.draft = null; savePlan(p); closeModal(); S.view = 'recipesAdmin'; render(); toast('Recipe removed.'); break; }
+    case 'openTask': S.openTask = S.openTask === id ? null : id; render(); break;
+    case 'addTask': { const t = {id: rid('x-'), r: S.draft.recipeId, day:'thu', t:'12:00', dur:15, who:'mm', title:'New step', steps:[], uses:{}}; S.draft.plan.tasks.push(t); S.openTask = t.id; render(); break; }
+    case 'delTask': S.draft.plan.tasks = S.draft.plan.tasks.filter(t => t.id !== id); render(); break;
+    case 'addGroup': S.draft.plan.recipes[S.draft.recipeId].ingredients.push({g:'New group', items:[]}); render(); break;
+    case 'delGroup': S.draft.plan.recipes[S.draft.recipeId].ingredients.splice(Number(el.dataset.i),1); render(); break;
+    case 'addMethod': S.draft.plan.recipes[S.draft.recipeId].steps.push({h:'New step', x:''}); render(); break;
+    case 'delMethod': S.draft.plan.recipes[S.draft.recipeId].steps.splice(Number(el.dataset.i),1); render(); break;
+    case 'addTool': S.draft.plan.kitchen.tools.push({id: rid('tool-'), name:'New tool', count:1}); render(); break;
+    case 'delTool': S.draft.plan.kitchen.tools.splice(Number(el.dataset.i),1); render(); break;
+    case 'schedDay': S.schedDay = v; render(); break;
+    case 'editTime': openModal('editTime', id); break;
+    case 'applyTime': { const t = findTask(S.draft.plan, id); t.day = document.getElementById('et-day').value; const tv = document.getElementById('et-time').value; if(tv) t.t = tv; const du = document.getElementById('et-dur'); if(du) t.dur = Math.max(0, Number(du.value)||0); closeModal(); if(t.day !== S.schedDay) toast(`Moved to ${t.day==='wed'?'Wednesday':'Thursday'}.`); render(); break; }
+    case 'discard': if(S.draft){ if(S.draft.mode === 'new'){ S.draft = null; go(isHost() ? 'recipes' : homeView(), true); toast('Dish not added.'); break; } S.draft.plan = clone(S.draft.base); if(S.draft.kind==='dinner') S.draft.shift = true; render(); toast('Changes discarded.'); } break;
+    case 'saveDraft': { if(!S.draft) break; const nv = commitDraft(); if(nv){ S.view = nv; window.scrollTo(0,0); } render(); break; }
+    case 'saveAndGo': if(S.draft && (dirty() || S.draft.mode === 'new')) commitDraft(); S.draft = null; afterLeave(v); break;
+    case 'declineSub': if(S.draft && S.draft.subId){ removeSub(S.draft.subId); S.draft = null; toast('Declined. It won\'t be added.'); go('recipes', true); } break;
+    case 'reviewSub': openReview(id); break;
+    case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; S.add.mode = v; S.add.error = ''; render(); } break;
+    case 'readRecipe': readRecipe(); break;
+    case 'importDish': importDish(); break;
+    case 'showPrompt': if(S.add){ const c = document.getElementById('import-code'); if(c) S.add.code = c.value; S.add.showPrompt = !S.add.showPrompt; render(); } break;
+    case 'copyPrompt': { const c = document.getElementById('import-code'); if(c && S.add) S.add.code = c.value;
+      const txt = importPrompt();
+      (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Copied. Paste it into Claude, then add your recipe.'), () => { if(S.add){ S.add.showPrompt = true; render(); } toast('Copy didn\'t work here. Select the prompt below and copy it.'); });
+      break; }
+    case 'stopRead': if(S.add && S.add.ctl) S.add.ctl.abort(); break;
+    case 'manualRecipe': manualRecipe(); break;
+    case 'fixAI': fixWithAI(); break;
+    case 'zoom': S.zoom = v; render(); break;
+    case 'addOvenStep': { const t = {id: rid('x-'), r: S.draft.recipeId, day:'thu', t:'15:00', dur:30, who:'mm', title:'Bake', steps:[], uses:{}, oven:{temp:350, slots:1, min:30, max:35, check:''}}; S.draft.plan.tasks.push(t); render(); break; }
+    case 'discardAndGo': S.draft = null; afterLeave(v); break;
+    case 'pretend': openModal('pretend'); break;
+    case 'savePretend': { const val = document.getElementById('pretend-time').value; if(val){ S.pretend = {at:new Date(val).getTime(), setAt:Date.now()}; lsSet('tg-pretend', S.pretend); } closeModal(); render(); break; }
+    case 'realtime': S.pretend = null; lsSet('tg-pretend', null); closeModal(); render(); break;
+    case 'askReset': openModal('reset'); break;
+    case 'doReset': resetAll(); closeModal(); break;
+    case 'close': closeModal(); break;
+  }
+});
+function afterLeave(v){ closeModal(); if(v === 'editRecipe' && S.pendingRecipe){ const k = S.pendingRecipe; S.pendingRecipe = null; startDraft('recipe', {recipeId:k}); S.view = 'editRecipe'; render(); } else go(v, true); }
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeModal();
+  const g = e.target.closest && e.target.closest('[data-grip]');
+  if(g && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
+    e.preventDefault();
+    const t = findTask(S.draft.plan, g.dataset.grip); t.t = fromMin(toMin(t.t) + (e.key==='ArrowUp' ? -5 : 5));
+    render(); const ng = document.querySelector(`[data-grip="${CSS.escape(t.id)}"]`); if(ng) ng.focus();
+  }
+});
+
+/* Drag on the schedule timeline */
+let drag = null, raf = 0;
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest && e.target.closest('[data-grip]'); if(!g || !S.draft) return;
+  e.preventDefault();
+  const blk = g.closest('.blk'), t = findTask(S.draft.plan, g.dataset.grip);
+  drag = {t, blk, y0: e.clientY, m0: toMin(t.t), top0: parseFloat(blk.style.top), pid: e.pointerId};
+  try{ g.setPointerCapture(e.pointerId); }catch(_){}
+  blk.classList.add('dragging');
+});
+document.addEventListener('pointermove', e => {
+  if(!drag || e.pointerId !== drag.pid) return;
+  const delta = Math.round((e.clientY - drag.y0) / PPM / 5) * 5;
+  const m = Math.max(0, Math.min(23*60+55, drag.m0 + delta));
+  drag.blk.style.top = (drag.top0 + (m - drag.m0) * PPM) + 'px';
+  drag.t.t = fromMin(m);
+  const lbl = drag.blk.querySelector('.blk-time'); if(lbl) lbl.textContent = fmtTime(at(drag.t.day, drag.t.t));
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    refreshImpact();
+    const bad = new Set(planIssues(S.draft.plan).flatMap(i => i.ids));
+    document.querySelectorAll('.blk').forEach(b => b.classList.toggle('bad', bad.has(b.dataset.id)));
+  });
+});
+function endDrag(e){ if(!drag || (e && e.pointerId !== drag.pid)) return; drag = null; render(); }
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+async function resetAll(){
+  const ids = Object.keys(S.tasks); S.tasks = {}; render();
+  if(!db){ lsSet('tg-local2', {tasks:{}, people:S.people, plan:S.plan}); return; }
+  for(const id of ids){ try{ await db.doc('tasks/'+id).delete(); }catch(e){} }
+  toast('Progress cleared.');
+}
+
+/* ============ BOOT ============ */
+function localKey(){ let k = lsGet('tg-helper-key'); if(!k){ k = 'local-' + Math.random().toString(36).slice(2,10); lsSet('tg-helper-key', k); } return k; }
+function validPlan(p){ return p && p.v === 2 && Array.isArray(p.tasks) && p.recipes && p.kitchen && Array.isArray(p.recipeOrder); }
+async function boot(){
+  render();
+  setInterval(() => { if(document.getElementById('modal').innerHTML || drag) return; const a = document.activeElement; if(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { document.querySelectorAll('.nowtxt').forEach(n => n.textContent = nowText()); return; } render(); }, 15000);
+  const C = window.claude;
+  const finishLocal = () => {
+    S.conn = 'local'; if(!S.key) S.key = localKey();
+    const l = lsGet('tg-local2'); if(l){ S.tasks = l.tasks || {}; S.people = l.people || {}; if(validPlan(l.plan)) S.plan = l.plan; }
+    S.subs = lsGet('tg-subs') || {};
+    afterIdentity(); S.ready = true; render();
+  };
+  let u = null, d = null;
+  if(C && typeof C.use === 'function'){ try{ [u, d] = await Promise.all([C.use('user'), C.use('db')]); }catch(e){} }
+  else {
+    S.noAI = true;
+    if(FIREBASE_CONFIG && window.firebase){ try{ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); d = firebase.firestore(); }catch(e){ d = null; } }
+  }
+  userCap = u; db = d;
+  if(u){ try{ const me = await u.me(); S.key = me.id || null; S.suggestedName = (me.name || '').split(' ')[0]; }catch(e){} }
+  if(!S.key) S.key = localKey();
+  if(!db) return finishLocal();
+  S.conn = 'loading';
+  let gotTasks = false, gotPlan = false;
+  const loaded = () => { if(gotTasks && gotPlan && !S.ready){ S.ready = true; afterIdentity(); } };
+  const loadTimer = setTimeout(() => { if(!S.ready){ S.ready = true; afterIdentity(); } if(S.conn === 'loading'){ S.conn = 'stale'; } render(); }, 10000);
+  db.doc('plan/current').onSnapshot(snap => {
+    if(snap.exists && validPlan((snap.data()||{}).plan)) S.plan = snap.data().plan;
+    if(!snap.metadata.fromCache) gotPlan = true;
+    loaded(); render();
+  }, () => { gotPlan = true; loaded(); render(); });
+  db.collection('tasks').onSnapshot(snap => {
+    const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.tasks = m;
+    if(!snap.metadata.fromCache){ gotTasks = true; clearTimeout(loadTimer); if(S.conn === 'loading' || S.conn === 'stale') S.conn = 'live'; }
+    loaded(); render();
+  }, () => { clearTimeout(loadTimer); S.conn = 'stale'; gotTasks = true; loaded(); render(); });
+  db.collection('submissions').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.subs = m; render(); }, () => {});
+  db.collection('people').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.people = m; render(); }, () => {});
+}
+function afterIdentity(){
+  S.baseKey = S.baseKey || S.key;
+  if(S.me && !(S.me.key && S.me.key.startsWith(S.baseKey + '-'))) S.me = null;   // saved identity from another account
+  if(S.me) S.key = S.me.key;
+  S.view = S.me ? homeView() : 'landing';
+}
+boot();
+
+</script>
+</body>
+</html>
