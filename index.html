@@ -425,8 +425,6 @@ svg{flex:0 0 auto}
 .import-steps .btns{margin-top:6px}
 .import-steps .field{margin-top:6px}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -771,6 +769,62 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "568992142411",
   appId: "1:568992142411:web:ae66b224824fd3b8d769ce"
 };
+
+const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+let gemini = null;
+function fsAdapter(F, fdb){
+  const wrap = x => ({id: x.id, exists: typeof x.exists === 'function' ? x.exists() : !!x.exists, data: () => x.data(), metadata: x.metadata});
+  return {
+    doc: path => ({
+      set: data => F.setDoc(F.doc(fdb, path), data),
+      delete: () => F.deleteDoc(F.doc(fdb, path)),
+      get: async () => wrap(await F.getDoc(F.doc(fdb, path))),
+      onSnapshot: (next, err) => F.onSnapshot(F.doc(fdb, path), x => next(wrap(x)), err)
+    }),
+    collection: path => ({
+      onSnapshot: (next, err) => F.onSnapshot(F.collection(fdb, path), q => next({docs: q.docs.map(wrap), size: q.size, empty: q.empty, metadata: q.metadata}), err)
+    })
+  };
+}
+async function setupGemini(app){
+  try{
+    const M = window.__testGeminiM || await import(FB_SDK + 'firebase-ai.js');
+    gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend()})};
+    S.noAI = false; render();
+  }catch(e){ gemini = null; }
+}
+const fileB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
+function looseJSON(t){
+  t = String(t || ''); try{ return JSON.parse(t); }catch(e){}
+  const a = Math.min(...['{','['].map(c => t.indexOf(c)).filter(i => i >= 0)), b = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+  if(isFinite(a) && b > a){ try{ return JSON.parse(t.slice(a, b + 1)); }catch(e){} }
+  throw {code:'invalid_json', message:'Could not parse JSON'};
+}
+function geminiSample(){
+  const fn = async () => { throw {code:'invalid_request'}; };
+  fn.json = async (prompt, opts = {}) => {
+    const parts = [{text: prompt}];
+    for(const f of (opts.images ? Array.from(opts.images) : [])) parts.push({inlineData: {mimeType: f.type || 'image/jpeg', data: await fileB64(f)}});
+    let last = null;
+    for(const name of GEMINI_MODELS){
+      if(opts.signal && opts.signal.aborted) throw {code:'cancelled'};
+      try{
+        const model = gemini.M.getGenerativeModel(gemini.ai, {model: name, generationConfig: {responseMimeType: 'application/json'}});
+        const call = model.generateContent(parts);
+        const res = opts.signal ? await Promise.race([call, new Promise((_, rej) => opts.signal.addEventListener('abort', () => rej({code:'cancelled'}), {once:true}))]) : await call;
+        return looseJSON(res.response.text());
+      }catch(e){
+        if(e && (e.code === 'cancelled' || e.code === 'invalid_json')) throw e;
+        last = e; const msg = String((e && e.message) || e);
+        if(/has not been used|is disabled|SERVICE_DISABLED|PERMISSION_DENIED|api-not-enabled|firebasevertexai|firebaseml/i.test(msg)) throw {code:'ai_off', message: msg};
+      }
+    }
+    const msg = String((last && last.message) || last);
+    throw {code: /429|quota|RESOURCE_EXHAUSTED|rate/i.test(msg) ? 'rate_limited' : 'upstream_error', message: msg};
+  };
+  return fn;
+}
 
 /* ============ BASICS ============ */
 const YEAR = 2026, MONTH = 10;
@@ -1238,7 +1292,7 @@ function impactHtml(){
   return `<div class="impact">
     <div class="card-h"><h2>What this changes</h2>${dirty() ? '<span class="pill warn">Not saved</span>' : '<span class="pill neutral">No changes yet</span>'}</div>
     <div>${finishLine}${pf !== pfBase ? ` <span class="sub">(was ${esc(fmtTime(pfBase))})</span>` : ''}</div>
-    ${!S.noAI && d.kind === 'recipe' && d.recipeId !== 'general' && iss.some(i => !baseKeys.has(i.text)) ? `<div class="btns"><button class="btn small primary" data-act="fixAI" ${S.fixing?'disabled':''}>${S.fixing ? 'Asking Claude…' : 'Ask Claude to fix the timing'}</button></div>` : ''}
+    ${!S.noAI && d.kind === 'recipe' && d.recipeId !== 'general' && iss.some(i => !baseKeys.has(i.text)) ? `<div class="btns"><button class="btn small primary" data-act="fixAI" ${S.fixing?'disabled':''}>${S.fixing ? 'Working on it…' : 'Fix the timing automatically'}</button></div>` : ''}
     <div><h3>Conflicts ${iss.length ? `<span class="sub">${iss.length}</span>` : ''}</h3>
       ${iss.length ? `<div class="alerts">${iss.map(i=>`<div class="alert ${i.lv}"><p>${baseKeys.has(i.text)?'':'<b class="newtag">New</b> '}${esc(i.text)}</p></div>`).join('')}</div>` : '<p class="empty">No conflicts. Equipment, oven space and timing all fit.</p>'}
     </div>
@@ -1316,8 +1370,10 @@ function renderEditRecipe(){
   const r = isGen ? {short:'Kitchen jobs', name:'Kitchen jobs'} : plan.recipes[k];
   if(!r) return renderRecipesAdmin();
   const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
-  const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><button class="btn small" data-act="addTask">Add a plan step</button></div>
-      <p class="sub" style="margin:0">${mode === 'edit' ? 'The timed steps on the dashboards and the helper list.' : 'Claude wrote these from the recipe and placed them in the day.'} Edit any of them. The panel shows what each change does to the rest of the plan.</p>
+  const canAI = !S.noAI && !isGen;
+  const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><div class="btns">${canAI ? `<button class="btn small primary" data-act="regenSteps" ${S.regen?'disabled':''}>${S.regen ? 'Rebuilding…' : 'Rebuild from recipe'}</button>` : ''}<button class="btn small" data-act="addTask">Add a plan step</button></div></div>
+      ${canAI ? '<p class="sub" style="margin:0">Changed the ingredients or method? "Rebuild from recipe" rewrites this dish\'s steps, helper jobs and oven times to match, and fits them around everything else. Nothing is saved until you save.</p>' : ''}
+      <p class="sub" style="margin:0">${mode === 'edit' ? 'The timed steps on the dashboards and the helper list.' : 'These were written from the recipe and placed in the day.'} Edit any of them. The panel shows what each change does to the rest of the plan.</p>
       <div class="tforms">${tasks.length ? tasks.map(t=>taskForm(plan,t)).join('') : '<p class="empty">No plan steps yet.</p>'}</div>
     </section>`;
   if(isGen) return editorPage('Kitchen jobs', 'General jobs that aren\'t tied to one recipe, like dishes and setting out serving bowls.', stepsCard);
@@ -1361,7 +1417,7 @@ function renderEditRecipe(){
     </details>
     ${mode === 'edit' && isHost() ? `<section class="card"><button class="btn ghost" data-act="askRemoveRecipe" data-id="${k}">Remove this recipe</button></section>` : ''}`;
   const title = mode === 'new' ? 'Review your dish' : mode === 'review' ? 'Review: ' + r.short : 'Edit: ' + r.short;
-  const sub = mode === 'new' ? 'Step 2 of 2. Check what Claude wrote, especially the oven, then save.' : mode === 'review' ? '' : 'Changes stay in this editor until you save.';
+  const sub = mode === 'new' ? 'Step 2 of 2. Check what was written, especially the oven, then save.' : mode === 'review' ? '' : 'Changes stay in this editor until you save.';
   return editorPage(title, sub, body);
 }
 
@@ -1709,17 +1765,17 @@ let sampleFn;
 async function getSample(){
   if(sampleFn !== undefined) return sampleFn;
   const C = window.claude;
-  if(!C || typeof C.use !== 'function'){ sampleFn = null; return null; }
+  if(!C || typeof C.use !== 'function'){ return gemini ? geminiSample() : null; }
   try{ sampleFn = await C.use('sample'); }catch(e){ sampleFn = null; }
   return sampleFn;
 }
 function renderAddDish(){
-  if(S.noAI) return renderImportDish();
+  if(S.noAI || (S.add && S.add.forceImport)) return renderImportDish();
   const A = S.add || (S.add = {mode:'text', text:'', files:[], own: !isHost(), busy:false, status:'', error:''});
   const photo = A.mode === 'photo';
   return `<div class="wrap"><section class="card add-card">
     <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
-    <p class="sub" style="margin:0">Paste a recipe or add a photo of it. Claude reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
+    <p class="sub" style="margin:0">Paste a recipe or add a photo of it. The planner reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
     <div class="seg" role="group" aria-label="How to add it"><button data-act="addMode" data-v="text" aria-pressed="${!photo}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo or screenshot</button></div>
     ${photo ? `<label class="field" for="add-files">Recipe photos (up to 4)<input id="add-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
       ${A.files.length ? `<p class="sub" style="margin:0">${A.files.length} photo${A.files.length>1?'s':''} ready: ${A.files.map(f=>esc(f.name)).join(', ')}</p>` : ''}`
@@ -1729,6 +1785,7 @@ function renderAddDish(){
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     ${A.busy ? `<div class="thinking" role="status"><span class="spinner" aria-hidden="true"></span><span>${esc(A.status || 'Reading the recipe…')}</span></div>` : ''}
     <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : `<button class="btn primary" data-act="readRecipe">Read the recipe</button>`}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Enter it by hand instead</button></div>
+    ${window.claude ? '' : `<button class="btn link" data-act="useImport">Or use Claude instead (copy and paste)</button>`}
   </section></div>`;
 }
 function importPrompt(){
@@ -1750,6 +1807,7 @@ function renderImportDish(){
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     <div class="btns"><button class="btn primary" data-act="importDish">Import dish</button><button class="btn ghost" data-act="manualRecipe">Enter it by hand instead</button></div>
+    ${S.noAI ? '' : `<button class="btn link" data-act="useAuto">Back to automatic reading</button>`}
   </section></div>`;
 }
 function importDish(){
@@ -1835,20 +1893,21 @@ async function readRecipe(){
   const photo = A.mode === 'photo';
   if(photo ? !A.files.length : A.text.trim().length < 40){ A.error = photo ? 'Add a photo of the recipe first.' : 'Paste the recipe, including its ingredients and instructions.'; render(); return; }
   const sample = await getSample();
-  if(!sample){ A.error = 'Reading recipes needs Claude, which isn\'t available in this view. You can enter the dish by hand instead.'; render(); return; }
+  if(!sample){ A.error = 'Automatic reading isn\'t available right now. Use the Claude copy-and-paste option, or enter the dish by hand.'; render(); return; }
   A.busy = true; A.status = 'Reading the recipe and fitting it into the day. This can take a minute.'; A.ctl = new AbortController(); render();
   try{
     const j = await sample.json(recipePrompt(A.text, photo), Object.assign({signal: A.ctl.signal, modelTier:'default'}, photo ? {images: A.files.slice(0,4)} : {}));
-    if(!j || typeof j !== 'object' || j.error){ A.error = (j && j.error) ? `Claude couldn't use that: ${j.error}` : 'Claude couldn\'t read a recipe there. Try pasting the text.'; return; }
+    if(!j || typeof j !== 'object' || j.error){ A.error = (j && j.error) ? `That didn't work: ${j.error}` : 'No recipe was found there. Try pasting the text.'; return; }
     const d = draftFromAI(j);
     S.draft = {kind:'recipe', mode:'new', plan:d.plan, base:clone(S.plan), recipeId:d.recipeId, own: isHost() ? false : A.own, ownerKey: isHost() ? null : (A.own ? S.key : null)};
     S.add = null; S.openTask = null; S.view = 'editRecipe'; window.scrollTo(0,0);
   }catch(e){
     const c = e && e.code;
-    A.error = c === 'cancelled' ? '' : c === 'not_granted' || c === 'sampling_disabled' ? 'Claude isn\'t allowed here, so the recipe can\'t be read automatically. You can enter it by hand.'
-      : c === 'rate_limited' ? 'Claude is busy or you\'ve hit a usage limit. Try again in a little while.'
+    A.error = c === 'cancelled' ? '' : c === 'not_granted' || c === 'sampling_disabled' ? 'Automatic reading isn\'t allowed here. Use the Claude copy-and-paste option or enter it by hand.'
+      : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet, or Google is still turning it on. Try again in a few minutes, or use the Claude copy-and-paste option.'
+      : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.'
       : c === 'image_rejected' ? 'That photo couldn\'t be used. Try a clearer JPEG or PNG.'
-      : c === 'invalid_json' ? 'Claude\'s answer came back incomplete. Try again, or paste less text.'
+      : c === 'invalid_json' ? 'The answer came back incomplete. Try again, or paste less text.'
       : c === 'prompt_too_large' ? 'That recipe is too long. Paste just the ingredients and instructions.'
       : 'Something went wrong reading the recipe. Try again.';
   }finally{ A.busy = false; render(); }
@@ -1864,7 +1923,7 @@ function manualRecipe(){
 async function fixWithAI(){
   const d = S.draft; if(!d) return;
   const sample = await getSample();
-  if(!sample){ toast('Claude isn\'t available in this view.'); return; }
+  if(!sample){ toast('Automatic fixing isn\'t available right now.'); return; }
   const issues = planIssues(d.plan).map(i => '- ' + i.text).join('\n');
   const mine = d.plan.tasks.filter(t => t.r === d.recipeId && t.who === 'mm').map(t => `- id ${t.id} | ${t.day} ${t.t} for ${len(t)} min${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.slots||1} spot(s)` : ''} | ${t.title}`).join('\n');
   const prompt = `Reschedule this dish's cook steps so they fit around the other steps with no conflicts. Keep its own order, keep make-ahead steps on Wednesday where possible, and finish by Thursday ${d.plan.dinner}.
@@ -1881,9 +1940,30 @@ Reply with only JSON: {"moves":[{"id":"step id","day":"wed|thu","t":"HH:MM"}]} l
     const j = await sample.json(prompt, {modelTier:'default'});
     let n = 0;
     for(const m of (j && Array.isArray(j.moves) ? j.moves : [])){ const t = findTask(d.plan, str(m.id)); const tv = validHM(m.t); if(t && t.r === d.recipeId && t.who === 'mm' && tv){ t.day = m.day === 'wed' ? 'wed' : 'thu'; t.t = tv; n++; } }
-    toast(n ? `Moved ${n} step${n>1?'s':''}. Check the panel to see what changed.` : 'Claude didn\'t find a better time. Try moving steps yourself.');
-  }catch(e){ toast(e && e.code === 'rate_limited' ? 'Claude is busy. Try again shortly.' : 'Couldn\'t get suggestions right now.'); }
+    toast(n ? `Moved ${n} step${n>1?'s':''}. Check the panel to see what changed.` : 'No better time was found. Try moving steps yourself.');
+  }catch(e){ toast(e && e.code === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet.' : e && e.code === 'rate_limited' ? 'The AI is busy. Try again shortly.' : 'Couldn\'t get suggestions right now.'); }
   finally{ S.fixing = false; render(); }
+}
+
+async function regenSteps(){
+  const d = S.draft; if(!d || d.recipeId === 'general') return;
+  const sample = await getSample();
+  if(!sample){ toast('Automatic rebuilding isn\'t available right now.'); return; }
+  const r = d.plan.recipes[d.recipeId];
+  const cur = d.plan.tasks.filter(t => t.r === d.recipeId).map(t => `- ${t.who === 'h' ? 'helper' : 'cook'} | ${t.day} ${t.t} ${len(t)} min${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.min}-${t.oven.max} min` : ''} | ${t.title}`).join('\n');
+  const text = `${r.name}\n\nINGREDIENTS\n${(r.ingredients||[]).map(g => g.g + ':\n' + g.items.map(i => '- ' + i).join('\n')).join('\n')}\n\nMETHOD\n${(r.steps||[]).map((st,i) => `${i+1}. ${st.h}: ${st.x}`).join('\n')}\n\nCURRENT PLAN STEPS FOR THIS DISH (keep their timing where it still makes sense):\n${cur || '(none)'}`;
+  const prompt = recipePrompt(text, false).replace(/\nEXISTING COOK STEPS[^]*?\n\nRULES/, `\nEXISTING COOK STEPS FOR OTHER DISHES (day start-end, oven, tools | dish: step):\n${scheduleSummary(d.plan, d.recipeId) || '(none)'}\n\nRULES`);
+  S.regen = true; render();
+  try{
+    const j = await sample.json(prompt, {modelTier:'default'});
+    if(!j || !Array.isArray(j.tasks) || !j.tasks.length){ toast('No steps came back. Try again.'); return; }
+    const hadProgress = d.plan.tasks.some(t => t.r === d.recipeId && S.tasks[t.id] && (S.tasks[t.id].done || S.tasks[t.id].assignee));
+    d.plan.tasks = d.plan.tasks.filter(t => t.r !== d.recipeId).concat(aiTasks(j.tasks, d.recipeId, d.plan));
+    if(Array.isArray(j.meta) && j.meta.length) r.meta = arr(j.meta);
+    S.openTask = null;
+    toast(hadProgress ? 'Steps rebuilt. Checkmarks and claimed jobs on the old steps won\'t carry over. Review, then save.' : 'Steps rebuilt. Check the panel to see what changed, then save.');
+  }catch(e){ const c = e && e.code; toast(c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again later.' : 'Couldn\'t rebuild the steps right now.'); }
+  finally{ S.regen = false; render(); }
 }
 
 /* ============ SAVE / SUBMIT A DRAFT ============ */
@@ -2187,6 +2267,9 @@ document.addEventListener('click', e => {
     case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; S.add.mode = v; S.add.error = ''; render(); } break;
     case 'readRecipe': readRecipe(); break;
     case 'importDish': importDish(); break;
+    case 'useImport': S.add = {code:'', own: !isHost(), error:'', showPrompt:false, forceImport:true}; render(); break;
+    case 'useAuto': S.add = null; render(); break;
+    case 'regenSteps': regenSteps(); break;
     case 'showPrompt': if(S.add){ const c = document.getElementById('import-code'); if(c) S.add.code = c.value; S.add.showPrompt = !S.add.showPrompt; render(); } break;
     case 'copyPrompt': { const c = document.getElementById('import-code'); if(c && S.add) S.add.code = c.value;
       const txt = importPrompt();
@@ -2269,7 +2352,14 @@ async function boot(){
   if(C && typeof C.use === 'function'){ try{ [u, d] = await Promise.all([C.use('user'), C.use('db')]); }catch(e){} }
   else {
     S.noAI = true;
-    if(FIREBASE_CONFIG && window.firebase){ try{ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); d = firebase.firestore(); }catch(e){ d = null; } }
+    if(FIREBASE_CONFIG){
+      try{
+        const [A, F] = window.__testFirebase || await Promise.all([import(FB_SDK + 'firebase-app.js'), import(FB_SDK + 'firebase-firestore.js')]);
+        const app = A.initializeApp(FIREBASE_CONFIG);
+        d = fsAdapter(F, F.getFirestore(app));
+        setupGemini(app);
+      }catch(e){ d = null; }
+    }
   }
   userCap = u; db = d;
   if(u){ try{ const me = await u.me(); S.key = me.id || null; S.suggestedName = (me.name || '').split(' ')[0]; }catch(e){} }
