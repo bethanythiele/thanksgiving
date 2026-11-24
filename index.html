@@ -424,6 +424,23 @@ svg{flex:0 0 auto}
 .import-steps li span{display:block;color:var(--muted);font-size:.92rem}
 .import-steps .btns{margin-top:6px}
 .import-steps .field{margin-top:6px}
+
+/* ---- v8: plan assistant, change time ---- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.chat-card{gap:14px}
+.chat-log{display:flex;flex-direction:column;gap:10px;max-height:58vh;overflow-y:auto;padding:4px 2px}
+.bubble{max-width:88%;border-radius:18px;padding:10px 14px;font-size:.98rem;line-height:1.4;white-space:pre-wrap}
+.bubble.me{align-self:flex-end;background:var(--orange);color:var(--white);border-bottom-right-radius:6px}
+.bubble.ai{align-self:flex-start;background:var(--yellow2);color:var(--ink);border-bottom-left-radius:6px}
+.bubble.thinking{display:flex;align-items:center;gap:10px}
+.chlist{margin:8px 0 0;padding-left:18px;display:grid;gap:3px;font-size:.88rem;white-space:normal}
+.chat-log .chips .pick{text-align:left;white-space:normal;line-height:1.25}
+.pending{background:var(--orange2);border-radius:16px;padding:12px 14px;display:grid;gap:10px}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;font:inherit;font-size:1rem;padding:10px 14px;border-radius:16px;border:0;background:var(--yellow2);color:var(--ink);resize:vertical;min-height:48px}
+.composer textarea:focus{outline:2px solid var(--orange)}
+.composer .btn{min-height:48px}
+.tt .field select,.tt .field input{min-height:44px}
 </style>
 </head>
 <body>
@@ -1077,6 +1094,7 @@ const IC = {
   replay: svgI('<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 .8-7.3L4 9"/>'),
   trash: svgI('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
   out: svgI('<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4M6 12h10"/>'),
+  chat: svgI('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
   plus2: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
   swap: svgI('<circle cx="10" cy="8" r="3.2"/><path d="M4 20c0-3.3 2.7-6 6-6 1.3 0 2.5.4 3.5 1.1"/><path d="M16 13l3 3-3 3M19 16h-5"/>'),
   list: svgI('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
@@ -1130,6 +1148,7 @@ function taskRow(t, opts={}){
       actions = stt ? `<button class="btn small" data-act="unstart" data-id="${t.id}">Cancel start</button>` : `<button class="btn small" data-act="start" data-id="${t.id}">Start</button>`;
     }
   }
+  if(!done && !opts.readonly && canEditTask(t) && !t.final) actions += `<button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button>`;
   let timer = '';
   if(io){
     const el = mins(now() - s.inOvenAt);
@@ -1158,6 +1177,7 @@ function banner(){
 function nowText(){ return S.pretend ? 'Pretend time ' + fmtDT(now()) : 'Now ' + fmtTime(now()); }
 function header(){
   return `<header class="top"><div class="bar">
+    ${S.me && effRole() === 'host' ? `<button class="iconbtn" data-act="go" data-v="chat" aria-label="Plan assistant" title="Plan assistant">${IC.chat}</button>` : ''}
     <button class="iconbtn" data-act="switch" aria-label="Switch user" title="Switch user">${IC.swap}</button>
     <button class="iconbtn" data-act="menu" aria-haspopup="dialog" aria-label="Open menu" title="Menu">${IC.menu}</button>
   </div></header>`;
@@ -1262,7 +1282,7 @@ function renderHelpersAdmin(){
         ${viLink(t.id, open)}
         ${neededBy(dueOf(plan,t), isDone(t))}
         ${open ? detail(t) : ''}
-        <div class="btns">${!isDone(t) ? `<button class="btn small" data-act="toMM" data-id="${t.id}">Make it a cook step</button>` : ''}${a && !isDone(t) ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}<button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
+        <div class="btns">${!isDone(t) ? `<button class="btn small" data-act="toMM" data-id="${t.id}">Make it a cook step</button>` : ''}${a && !isDone(t) ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}<button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button><button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
       </div></div>`;
     }).join('') : '<p class="empty">Nothing here.</p>'}</div>
   </section>`;
@@ -2014,6 +2034,237 @@ function reviewQueue(){
   </section>`;
 }
 
+/* ============ PLAN CHANGES (shared by the assistant and time editing) ============ */
+function canEditTask(t){ return isHost() || myDishes().includes(t.r); }
+function applyOps(plan, ops){
+  const lines = [], toolIds = new Set(plan.kitchen.tools.map(x => x.id));
+  const find = ref => { if(!ref) return null; const r = str(typeof ref === 'object' ? ref.id : ref); return plan.tasks.find(t => t.id === r) || plan.tasks.find(t => t.title.toLowerCase() === r.toLowerCase()) || null; };
+  const setFields = (t, f) => {
+    if(f.title != null && str(f.title)) t.title = str(f.title);
+    if(f.who === 'h' && t.who !== 'h'){ t.who = 'h'; delete t.oven; t.uses = {}; if(!t.from) t.from = [t.day, t.t]; if(!t.for && !t.due) t.due = [t.day, fromMin(toMin(t.t) + (t.dur||10))]; }
+    else if(f.who === 'mm' && t.who !== 'mm'){ const d0 = dueOf(plan, t) - (t.dur||5)*60000; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); }
+    if(f.day === 'wed' || f.day === 'thu') t.day = f.day;
+    if(f.t && validHM(f.t) && !t.final) t.t = validHM(f.t);
+    if(f.dur != null) t.dur = clampInt(f.dur, 0, 720, t.dur || 0);
+    if(Array.isArray(f.steps)) t.steps = arr(f.steps);
+    if(Array.isArray(f.notes)) t.notes = arr(f.notes);
+    if(f.uses && typeof f.uses === 'object'){ const u = {}; for(const [k,q] of Object.entries(f.uses)) if(toolIds.has(k) && Number(q) > 0) u[k] = Math.min(9, Math.round(Number(q))); t.uses = u; }
+    if('oven' in f){
+      if(f.oven && Number(f.oven.temp)){ const p0 = t.oven || {}; const o = {temp: clampInt(f.oven.temp,150,550,350), slots: clampInt(f.oven.slots,1,8,p0.slots||1), min: clampInt(f.oven.min,1,720,p0.min||30), check: str(f.oven.check) || p0.check || ''}; o.max = Math.max(o.min, clampInt(f.oven.max,1,720,p0.max||o.min)); if(p0.mid) o.mid = p0.mid; t.oven = o; t.dur = o.min; }
+      else delete t.oven;
+    }
+    if(t.who === 'h'){
+      if(Array.isArray(f.from) && validHM(f.from[1])) t.from = [f.from[0] === 'wed' ? 'wed' : 'thu', validHM(f.from[1])];
+      else if((f.day || f.t) && !f.from) t.from = [t.day, t.t];
+      if(f.for && find(f.for)){ t.for = {id: find(f.for).id, before: clampInt(f.for.before, -120, 900, 0)}; delete t.due; }
+      else if(f.for === null && t.for){ const d = dueOf(plan, t); t.due = [dayOf(d), hm(d)]; delete t.for; }
+      if(Array.isArray(f.due) && validHM(f.due[1])){ t.due = [f.due[0] === 'wed' ? 'wed' : 'thu', validHM(f.due[1])]; delete t.for; }
+      if(t.from){ t.day = t.from[0]; t.t = t.from[1]; }
+      if(!t.for && !t.due) t.due = [t.day, fromMin(toMin(t.t) + (t.dur||10))];
+    }
+    if(Array.isArray(f.needs)) t.needs = f.needs.map(find).filter(Boolean).map(x => x.id).filter(x => x !== t.id);
+  };
+  const when = t => t.who === 'h' ? 'needed by ' + fmtDT(dueOf(plan, t)) : fmtDT(sched(plan, t));
+  for(const op of (Array.isArray(ops) ? ops : []).slice(0, 80)){
+    if(!op || typeof op !== 'object') continue;
+    if(op.op === 'update'){
+      const t = find(op.id); if(!t) continue;
+      const before = when(t), title0 = t.title;
+      setFields(t, op.set || {});
+      const after = when(t);
+      lines.push(before !== after ? `Moved "${t.title}": ${before} → ${after}` : `Updated "${title0}"`);
+    } else if(op.op === 'add'){
+      const x = op.task || {};
+      const t = {id: rid('x-'), r: plan.recipes[x.r] ? x.r : 'general', who: x.who === 'h' ? 'h' : 'mm', day:'thu', t:'12:00', dur:15, title:'New step', steps:[], uses:{}};
+      if(t.who === 'h') t.from = [x.day === 'wed' ? 'wed' : 'thu', validHM(x.t) || '08:00'];
+      setFields(t, x);
+      plan.tasks.push(t);
+      lines.push(`Added "${t.title}" (${when(t)})`);
+    } else if(op.op === 'delete'){
+      const t = find(op.id); if(!t || t.final) continue;
+      const at0 = sched(plan, t);
+      plan.tasks = plan.tasks.filter(o => o !== t);
+      for(const o of plan.tasks){
+        if(o.needs) o.needs = o.needs.filter(n => n !== t.id);
+        if(o.for && o.for.id === t.id){ const d = at0 - (o.for.before||0)*60000; o.due = [dayOf(d), hm(d)]; delete o.for; }
+        if(o.after && o.after.id === t.id) delete o.after;
+      }
+      lines.push(`Removed "${t.title}"`);
+    }
+  }
+  return lines.concat(relaxHelpers(plan));
+}
+
+function relaxHelpers(plan){
+  const lines = [];
+  for(const t of plan.tasks){
+    if(t.who !== 'h' || !t.from) continue;
+    const due = dueOf(plan, t), latest = due - (t.dur||5)*60000, f = at(...t.from);
+    if(f > latest){
+      const day = dayOf(latest), floor = at(day, '07:00');
+      const start = Math.max(floor, latest - 60*60000);
+      t.from = [day, hm(Math.floor(start/300000)*300000)]; t.day = t.from[0]; t.t = t.from[1];
+      lines.push(`"${t.title}" can now start ${fmtDT(at(...t.from))} so it's ready in time`);
+    }
+  }
+  return lines;
+}
+
+/* ============ CHANGE ONE STEP'S TIME ============ */
+function taskTimeHtml(id){
+  const t = findTask(S.plan, id); if(!t) return '';
+  const ds = (idx, v) => `<select id="${idx}"><option value="wed" ${v==='wed'?'selected':''}>Wednesday</option><option value="thu" ${v==='thu'?'selected':''}>Thursday</option></select>`;
+  let fields;
+  if(t.who === 'h'){
+    const target = t.for ? findTask(S.plan, t.for.id) : null;
+    const due = dueOf(S.plan, t), from = t.from || [t.day, t.t];
+    fields = `<div class="fgrid tt">
+      <label class="field">Can start<span class="sub" style="font-weight:400">Day</span>${ds('tt-fday', from[0])}</label>
+      <label class="field">&nbsp;<span class="sub" style="font-weight:400">Time</span><input id="tt-ftime" type="time" value="${esc(from[1])}"></label>
+      <label class="field">Takes about (min)<input id="tt-dur" type="number" min="1" max="240" value="${t.dur||5}"></label>
+      ${target ? `<label class="field wide">Needed by<span class="sub" style="font-weight:400">Minutes before "${esc(target.title)}" (${esc(fmtDT(sched(S.plan,target,true)))})</span><input id="tt-before" type="number" min="-120" max="900" value="${t.for.before||0}"></label>`
+        : `<label class="field">Needed by<span class="sub" style="font-weight:400">Day</span>${ds('tt-dday', dayOf(due))}</label><label class="field">&nbsp;<span class="sub" style="font-weight:400">Time</span><input id="tt-dtime" type="time" value="${esc(hm(due))}"></label>`}
+    </div>`;
+  } else {
+    fields = `<div class="fgrid tt">
+      <label class="field">Day${ds('tt-day', t.day)}</label>
+      <label class="field">Starts at<input id="tt-time" type="time" value="${esc(t.t)}" ${t.final?'disabled':''}></label>
+      ${t.oven ? `<label class="field">Bake, min<input id="tt-omin" type="number" min="1" max="720" value="${t.oven.min}"></label><label class="field">Bake, max<input id="tt-omax" type="number" min="1" max="720" value="${t.oven.max}"></label>`
+        : `<label class="field">Minutes<input id="tt-dur" type="number" min="0" max="720" value="${t.dur||0}"></label>`}
+    </div>`;
+  }
+  return `<div class="card-h"><h2 id="dlg-h">Change time</h2><button class="btn small ghost" data-act="close">Close</button></div>
+    <p class="sub" style="margin:0"><b>${esc(t.title)}</b> · ${esc(recipeOf(S.plan, t.r).short)}</p>
+    ${fields}
+    <div id="tt-preview" aria-live="polite">${ttPreview(id)}</div>
+    <div class="btns"><button class="btn primary" data-act="saveTT" data-id="${id}">Save</button><button class="btn ghost" data-act="close">Cancel</button></div>`;
+}
+function ttPlan(id){
+  const p = clone(S.plan), t = findTask(p, id); if(!t) return p;
+  const v = x => { const el = document.getElementById(x); return el ? el.value : null; };
+  if(t.who === 'h'){
+    const fd = v('tt-fday'), ft = validHM(v('tt-ftime'));
+    if(fd && ft){ t.from = [fd, ft]; t.day = fd; t.t = ft; }
+    if(v('tt-dur') != null) t.dur = clampInt(v('tt-dur'), 1, 240, t.dur);
+    if(v('tt-before') != null && t.for) t.for.before = clampInt(v('tt-before'), -120, 900, t.for.before||0);
+    const dd = v('tt-dday'), dt = validHM(v('tt-dtime')); if(dd && dt){ t.due = [dd, dt]; delete t.for; }
+  } else {
+    if(v('tt-day')) t.day = v('tt-day');
+    const tm = validHM(v('tt-time')); if(tm && !t.final) t.t = tm;
+    if(t.oven){ const a = clampInt(v('tt-omin'), 1, 720, t.oven.min), b = clampInt(v('tt-omax'), 1, 720, t.oven.max); t.oven.min = a; t.oven.max = Math.max(a, b); t.dur = a; }
+    else if(v('tt-dur') != null) t.dur = clampInt(v('tt-dur'), 0, 720, t.dur);
+    relaxHelpers(p);
+  }
+  return p;
+}
+function ttPreview(id){
+  const p = document.getElementById('tt-day') || document.getElementById('tt-fday') ? ttPlan(id) : S.plan;
+  const old = new Set(planIssues(S.plan).map(i => i.text));
+  const fresh = planIssues(p).filter(i => !old.has(i.text));
+  const t = findTask(p, id), t0 = findTask(S.plan, id);
+  const moved = p.tasks.filter(x => x.who === 'h' && x.id !== id && dueOf(p, x) !== dueOf(S.plan, findTask(S.plan, x.id) || x));
+  return `${fresh.length ? `<div class="alerts">${fresh.map(i => `<div class="alert ${i.lv}"><p><b class="newtag">New</b> ${esc(i.text)}</p></div>`).join('')}</div>` : '<p class="empty">No new conflicts.</p>'}
+    ${moved.length ? `<p class="sub" style="margin:6px 0 0">Helper deadlines that move with it: ${moved.map(x => esc(`"${x.title}" by ${fmtDT(dueOf(p,x))}`)).join('; ')}</p>` : ''}`;
+}
+
+/* ============ PLAN ASSISTANT ============ */
+function planForAI(plan){
+  const tools = plan.kitchen.tools.map(x => ({id:x.id, name:x.name, count:x.count}));
+  return JSON.stringify({
+    dinner: 'thu ' + plan.dinner,
+    kitchen: {ovenSpots: plan.kitchen.ovenSpots, tools},
+    recipes: Object.fromEntries(plan.recipeOrder.filter(k => plan.recipes[k]).map(k => [k, plan.recipes[k].name])),
+    tasks: plan.tasks.map(t => {
+      const o = {id:t.id, r:t.r, who:t.who, title:t.title};
+      if(t.who === 'mm'){ o.day = t.day; o.t = t.final ? plan.dinner : t.t; o.dur = len(t); }
+      else { o.from = t.from || [t.day, t.t]; o.dur = t.dur; if(t.for) o.for = t.for; else o.due = t.due; o.neededBy = dayOf(dueOf(plan,t)) + ' ' + hm(dueOf(plan,t)); }
+      if(t.oven) o.oven = {temp:t.oven.temp, min:t.oven.min, max:t.oven.max, slots:t.oven.slots||1};
+      const u = Object.entries(t.uses||{}).filter(([,q]) => q > 0); if(u.length) o.uses = Object.fromEntries(u);
+      if(t.needs && t.needs.length) o.needs = t.needs;
+      if(t.final) o.final = true; if(t.optional) o.optional = true;
+      if(S.tasks[t.id] && S.tasks[t.id].done) o.done = true;
+      o.steps = t.steps;
+      return o;
+    })
+  });
+}
+function chatPrompt(plan, msgs){
+  const hist = msgs.slice(0, -1).slice(-8).map(m => (m.role === 'user' ? 'HOST: ' : 'ASSISTANT: ') + m.text + (m.changes && m.changes.length ? ' [changes: ' + m.changes.join('; ') + ']' : '')).join('\n');
+  const issues = planIssues(plan).map(i => '- ' + i.text).join('\n') || '(none)';
+  return `You are the planning assistant inside a home Thanksgiving cooking planner. The host tells you in plain language how they want the plan to change, or asks a question about it. You change the plan by returning operations on its steps.
+
+Think through knock-on effects before you answer, and fix them in the same reply:
+- Equipment: each tool has a count. Two steps can't use more than that at once. If a change keeps a pot or burner busy longer, move or change the steps that needed it.
+- Oven: one temperature at a time, at most ${plan.kitchen.ovenSpots} sheet-pan spots.
+- Order: a step can't start before the steps it "needs" are done. Helper jobs ("who":"h") are prep for the cook step they are "for" and must be done "before" minutes ahead of it. When you move a cook step earlier, move its helper jobs' "from" earlier too, and delete helper jobs that no longer make sense.
+- Food: if something is made ahead, add the steps it now needs (cool, cover and refrigerate; reheat, with the tool or oven it uses, before serving) and remove steps that no longer make sense.
+- Everything must be ready by dinner (${plan.dinner} Thursday). Keep all other steps as they are. Don't change steps marked done unless asked.
+- Helpers never do oven work, stovetop cooking, tasting or seasoning.
+
+PLAN (JSON; times are 24h; "who":"mm" = cook step with day, start "t" and "dur" minutes; "who":"h" = helper job with earliest start "from" and a deadline from "for" or "due"):
+${planForAI(plan)}
+
+CURRENT CONFLICTS:
+${issues}
+${hist ? `\nCONVERSATION SO FAR:\n${hist}\n` : ''}
+HOST: ${msgs[msgs.length - 1].text}
+
+Reply with only JSON:
+{"reply":"1-3 short, plain sentences: what you changed and why, or the answer to the question","changes":[
+  {"op":"update","id":"step id","set":{"day":"thu","t":"12:30","dur":40,"title":"...","steps":["..."],"uses":{"toolId":1},"oven":{"temp":350,"min":30,"max":35,"slots":1,"check":"..."},"from":["thu","09:00"],"for":{"id":"cook step id","before":10},"needs":["step id"]}},
+  {"op":"add","task":{"r":"recipe id","who":"mm","day":"thu","t":"13:00","dur":20,"title":"...","steps":["..."],"uses":{},"oven":null,"needs":["step id"]}},
+  {"op":"delete","id":"step id"}
+]}
+In "set", include only the fields you change. Use "oven": null to stop a step using the oven. Times are "HH:MM" in multiples of 5. Use existing step ids and tool ids. If nothing should change, return "changes": [].`;
+}
+function renderChat(){
+  const C = S.chat || (S.chat = {msgs:[], busy:false, input:''});
+  const d = S.draft && S.draft.kind === 'chat' ? S.draft : null, pending = d && dirty();
+  const examples = ['Move the Wednesday prep jobs to Thursday morning', 'Keep the cider in the big pot. Make the mashed potatoes ahead and reheat them', 'What\'s my busiest hour on Thursday?', 'Push dinner to 5:30 and shift the afternoon'];
+  const msgs = C.msgs.map(m => m.role === 'user'
+    ? `<div class="bubble me">${esc(m.text)}</div>`
+    : `<div class="bubble ai">${esc(m.text)}${m.changes && m.changes.length ? `<ul class="chlist">${m.changes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  const off = S.noAI ? '<div class="note">The assistant needs Firebase AI Logic switched on. Once it is, refresh this page.</div>' : '';
+  const chat = `<section class="card chat-card" aria-labelledby="chat-h">
+    <div class="card-h"><h1 class="ed-h" id="chat-h">Plan assistant</h1><button class="btn link" data-act="go" data-v="dashboard">Back</button></div>
+    <p class="sub" style="margin:0">Tell it what you want in plain words. It adjusts every step that's affected (equipment, oven, timing, helper prep) and shows you the result before anything changes.</p>
+    ${off}
+    <div class="chat-log" id="chat-log" aria-live="polite">${msgs || `<div class="chips">${examples.map(x => `<button class="pick" data-act="chatExample" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
+      ${C.busy ? '<div class="bubble ai thinking"><span class="spinner" aria-hidden="true"></span>Working through the plan…</div>' : ''}</div>
+    ${pending ? `<div class="pending"><b>Changes ready to apply.</b> Nothing changes for anyone until you tap Apply. You can keep asking for tweaks first.
+      <div class="btns"><button class="btn primary" data-act="chatApply">Apply changes</button><button class="btn ghost" data-act="chatUndo">Undo all</button></div></div>` : ''}
+    <div class="composer"><label class="sr" for="chat-input">Message the plan assistant</label>
+      <textarea id="chat-input" rows="2" placeholder="e.g. Do the green bean prep Thursday morning instead" ${S.noAI?'disabled':''}>${esc(C.input||'')}</textarea>
+      ${C.busy ? '<button class="btn" data-act="chatStop">Stop</button>' : `<button class="btn primary" data-act="chatSend" ${S.noAI?'disabled':''}>Send</button>`}</div>
+  </section>`;
+  const rail = d ? `<section class="card" id="impact" aria-live="polite">${impactHtml()}</section>` : `<section class="card"><h2>How it works</h2><ol class="steps"><li>Describe the change, like "make the mash ahead and keep the cider in the big pot."</li><li>The assistant edits every affected step and lists what it changed.</li><li>Check the conflicts and moved steps here, ask for tweaks, then Apply.</li></ol></section>`;
+  return `<div class="wrap split"><div class="col">${chat}</div><aside class="rail">${rail}</aside></div>`;
+}
+function scrollChat(){ const el = document.getElementById('chat-log'); if(el) el.scrollTop = el.scrollHeight; }
+async function chatSend(textArg){
+  const C = S.chat || (S.chat = {msgs:[], busy:false, input:''});
+  const el = document.getElementById('chat-input');
+  const text = str(textArg != null ? textArg : (el ? el.value : C.input));
+  if(!text || C.busy) return;
+  const sample = await getSample();
+  if(!sample){ C.msgs.push({role:'user', text}, {role:'ai', text:'The assistant isn\'t available right now. Make sure Firebase AI Logic is switched on, then refresh.'}); C.input = ''; render(); return; }
+  C.msgs.push({role:'user', text}); C.input = ''; C.busy = true; C.ctl = new AbortController(); render(); scrollChat();
+  const base = S.draft && S.draft.kind === 'chat' ? S.draft.plan : S.plan;
+  try{
+    const j = await sample.json(chatPrompt(base, C.msgs), {signal: C.ctl.signal, modelTier:'default'});
+    const ops = j && Array.isArray(j.changes) ? j.changes : [];
+    let lines = [];
+    if(ops.length){
+      if(!S.draft || S.draft.kind !== 'chat') startDraft('chat');
+      lines = applyOps(S.draft.plan, ops);
+    }
+    C.msgs.push({role:'ai', text: str(j && j.reply) || (lines.length ? 'Here\'s what I changed.' : 'Nothing needed to change.'), changes: lines});
+  }catch(e){
+    const c = e && e.code;
+    if(c !== 'cancelled') C.msgs.push({role:'ai', text: c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.'});
+  }finally{ C.busy = false; render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
+}
+
 /* ============ ROOT RENDER ============ */
 function render(){
   if(drag){ return; }
@@ -2027,7 +2278,7 @@ function render(){
   else if(S.view === 'addDish') body = renderAddDish();
   else if(S.view === 'editRecipe' && S.draft) body = renderEditRecipe();
   else if(role === 'host') body = ({dashboard:renderDashboard, recipes:renderRecipes, helpers:renderHelpersAdmin, recipesAdmin:renderRecipesAdmin,
-    kitchen:renderKitchen, dinner:renderDinner, schedule:renderSchedule}[S.view] || renderDashboard)();
+    kitchen:renderKitchen, dinner:renderDinner, schedule:renderSchedule, chat:renderChat}[S.view] || renderDashboard)();
   else if(role === 'owner') body = ({mine:renderOwner, recipes:renderRecipes, help:renderHelper}[S.view] || renderOwner)();
   else body = renderHelper();
   const nav = role === 'host' || role === 'owner';
@@ -2056,6 +2307,7 @@ function openModal(kind, id){
     const role = effRole(), mm = role === 'host';
     const mi = (act, v, icon, label, sub) => `<button class="menu-item" data-act="${act}" ${v?`data-v="${v}"`:''}><span class="mi-ico">${icon}</span><span><b>${label}</b>${sub?`<span>${sub}</span>`:''}</span></button>`;
     const items = mm ? [
+      mi('go','chat',IC.chat,'Plan assistant','Ask for changes in plain words'),
       mi('go','addDish',IC.plus2,'Add a dish','Paste a recipe or add a photo'),
       mi('go','recipesAdmin',IC.book,'Recipes & ingredients','Edit, review or remove recipes'),
       mi('go','schedule',IC.cal,'Schedule','Drag steps to new times'),
@@ -2071,6 +2323,11 @@ function openModal(kind, id){
       <div class="menu menu-foot">${mi('switch','',IC.out,'Switch user','Sign in as someone else on this device')}</div>
     </div></div>`;
     const f = m.querySelector('.menu-item'); if(f) f.focus();
+    return;
+  } else if(kind === 'taskTime'){
+    S.ttId = id;
+    m.innerHTML = `<div class="scrim" data-act="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h" data-kind="taskTime">${taskTimeHtml(id)}</div></div>`;
+    const f = m.querySelector('select,input'); if(f) f.focus();
     return;
   } else if(kind === 'task'){
     S.modalTask = id;
@@ -2124,11 +2381,12 @@ function toast(msg){ const el = document.getElementById('toast'); el.innerHTML =
 /* ============ NAVIGATION ============ */
 function go(v, force){
   closeModal();
-  const editorViews = ['editRecipe','kitchen','dinner','schedule'];
+  const editorViews = ['editRecipe','kitchen','dinner','schedule','chat'];
   if(!force && editorViews.includes(S.view) && S.draft && (dirty() || S.draft.mode === 'new') && S.draft.mode !== 'review' && v !== S.view){ openModal('leave', v); return; }
   if(v === 'kitchen'){ startDraft('kitchen'); }
   else if(v === 'dinner'){ startDraft('dinner', {shift:true}); }
   else if(v === 'schedule'){ startDraft('schedule'); }
+  else if(v === 'chat'){ if(S.draft && S.draft.kind !== 'chat') S.draft = null; }
   else if(!editorViews.includes(v)) S.draft = null;
   if(v === 'addDish') S.add = null;
   S.view = v; render(); window.scrollTo(0,0);
@@ -2184,6 +2442,8 @@ document.addEventListener('input', e => {
   if(el.name === 'newdish'){ S.landingNew = el.checked; el.closest('.dish').classList.toggle('on', el.checked); }
   if(el.id === 'add-text' && S.add) S.add.text = el.value;
   if(el.id === 'import-code' && S.add) S.add.code = el.value;
+  if(el.id === 'chat-input' && S.chat) S.chat.input = el.value;
+  if(el.closest && el.closest('.tt') && S.ttId !== undefined){ const pv = document.getElementById('tt-preview'); if(pv) pv.innerHTML = ttPreview(S.ttId); }
   if(el.id === 'add-own' && S.add) S.add.own = el.checked;
 });
 document.addEventListener('change', e => {
@@ -2216,6 +2476,13 @@ document.addEventListener('click', e => {
   const plan = S.plan;
   switch(act){
     case 'go': go(v); break;
+    case 'taskTime': closeModal(); openModal('taskTime', id); break;
+    case 'saveTT': { const p2 = ttPlan(id); closeModal(); savePlan(p2); toast('Time updated.'); break; }
+    case 'chatSend': chatSend(); break;
+    case 'chatExample': chatSend(v); break;
+    case 'chatStop': if(S.chat && S.chat.ctl) S.chat.ctl.abort(); break;
+    case 'chatApply': if(S.draft && S.draft.kind === 'chat'){ savePlan(clone(S.draft.plan)); S.draft = null; if(S.chat) S.chat.msgs.push({role:'ai', text:'Applied. Everyone now sees the updated plan.'}); render(); toast('Plan updated.'); } break;
+    case 'chatUndo': if(S.draft && S.draft.kind === 'chat'){ S.draft = null; if(S.chat) S.chat.msgs.push({role:'ai', text:'Undone. The plan is back to how it was.'}); render(); } break;
     case 'landContinue': landContinue(); break;
     case 'menu': openModal('menu'); break;
     case 'switch': closeModal(); S.view = 'landing'; S.draft = null; render(); window.scrollTo(0,0); break;
@@ -2293,6 +2560,7 @@ function afterLeave(v){ closeModal(); if(v === 'editRecipe' && S.pendingRecipe){
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') closeModal();
   if(e.key === 'Enter' && e.target.id === 'land-name'){ e.preventDefault(); landContinue(); }
+  if(e.key === 'Enter' && !e.shiftKey && e.target.id === 'chat-input'){ e.preventDefault(); chatSend(); }
   const g = e.target.closest && e.target.closest('[data-grip]');
   if(g && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
     e.preventDefault();
