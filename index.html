@@ -1193,7 +1193,7 @@ function renderLanding(){
         <label class="role${role==='host'?' on':''}"><input type="radio" name="role" value="host" ${role==='host'?'checked':''}><b>I'm the host</b><span>Run the whole dinner: every dish, the oven and the schedule.</span></label>
       </fieldset>
       <p class="formerr" id="land-err" role="alert"></p>
-      <div class="submit-row"><button class="btn primary big" type="submit">Continue</button></div>
+      <div class="submit-row"><button class="btn primary big" type="button" data-act="landContinue">Continue</button></div>
     </form>
   </div></main>`;
 }
@@ -2192,9 +2192,8 @@ document.addEventListener('change', e => {
   if(el.id === 'owner-sel' && S.draft){ S.draft.ownerKey = el.value || null; S.draft.ownerChanged = true; refreshImpact(); return; }
   if(el.dataset && el.dataset.b && (el.dataset.struct || el.tagName === 'SELECT')){ if(applyBind(el)) render(); }
 });
-document.addEventListener('submit', e => {
-  if(e.target.id !== 'land-form') return;
-  e.preventDefault();
+document.addEventListener('submit', e => { if(e.target.id === 'land-form'){ e.preventDefault(); landContinue(); } });
+function landContinue(){
   const role = (document.querySelector('input[name="role"]:checked') || {}).value;
   const name = document.getElementById('land-name').value.trim().slice(0,30);
   const err = document.getElementById('land-err');
@@ -2209,7 +2208,7 @@ document.addEventListener('submit', e => {
   S.landingRole = null; S.landingName = null; S.landingDishes = null; S.landingNew = false;
   if(addNew){ S.add = null; S.view = 'addDish'; } else S.view = homeView();
   render(); window.scrollTo(0,0);
-});
+}
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if(!el) return;
   const act = el.dataset.act, id = el.dataset.id, v = el.dataset.v;
@@ -2217,6 +2216,7 @@ document.addEventListener('click', e => {
   const plan = S.plan;
   switch(act){
     case 'go': go(v); break;
+    case 'landContinue': landContinue(); break;
     case 'menu': openModal('menu'); break;
     case 'switch': closeModal(); S.view = 'landing'; S.draft = null; render(); window.scrollTo(0,0); break;
     case 'recipeTab': S.recipeTab = v; render(); break;
@@ -2292,6 +2292,7 @@ document.addEventListener('click', e => {
 function afterLeave(v){ closeModal(); if(v === 'editRecipe' && S.pendingRecipe){ const k = S.pendingRecipe; S.pendingRecipe = null; startDraft('recipe', {recipeId:k}); S.view = 'editRecipe'; render(); } else go(v, true); }
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') closeModal();
+  if(e.key === 'Enter' && e.target.id === 'land-name'){ e.preventDefault(); landContinue(); }
   const g = e.target.closest && e.target.closest('[data-grip]');
   if(g && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
     e.preventDefault();
