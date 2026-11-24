@@ -834,7 +834,9 @@ function geminiSample(){
       }catch(e){
         if(e && (e.code === 'cancelled' || e.code === 'invalid_json')) throw e;
         last = e; const msg = String((e && e.message) || e);
-        if(/has not been used|is disabled|SERVICE_DISABLED|PERMISSION_DENIED|api-not-enabled|firebasevertexai|firebaseml/i.test(msg)) throw {code:'ai_off', message: msg};
+        S.aiErr = msg.slice(0, 400);
+        if((e && e.code === 'api-not-enabled') || /has not been used in project|SERVICE_DISABLED|API_NOT_ENABLED|it is disabled/i.test(msg)) throw {code:'ai_off', message: msg};
+        if(/app ?check/i.test(msg)) throw {code:'appcheck', message: msg};
       }
     }
     const msg = String((last && last.message) || last);
@@ -1925,11 +1927,13 @@ async function readRecipe(){
     const c = e && e.code;
     A.error = c === 'cancelled' ? '' : c === 'not_granted' || c === 'sampling_disabled' ? 'Automatic reading isn\'t allowed here. Use the Claude copy-and-paste option or enter it by hand.'
       : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet, or Google is still turning it on. Try again in a few minutes, or use the Claude copy-and-paste option.'
+      : c === 'appcheck' ? 'Firebase App Check is blocking the AI. In Firebase, open Security → App Check → APIs, and set Firebase AI Logic to Unenforced.'
       : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.'
       : c === 'image_rejected' ? 'That photo couldn\'t be used. Try a clearer JPEG or PNG.'
       : c === 'invalid_json' ? 'The answer came back incomplete. Try again, or paste less text.'
       : c === 'prompt_too_large' ? 'That recipe is too long. Paste just the ingredients and instructions.'
       : 'Something went wrong reading the recipe. Try again.';
+    if(c && c !== 'cancelled' && S.aiErr) A.error += ' Details: ' + S.aiErr;
   }finally{ A.busy = false; render(); }
 }
 function manualRecipe(){
@@ -2261,7 +2265,7 @@ async function chatSend(textArg){
     C.msgs.push({role:'ai', text: str(j && j.reply) || (lines.length ? 'Here\'s what I changed.' : 'Nothing needed to change.'), changes: lines});
   }catch(e){
     const c = e && e.code;
-    if(c !== 'cancelled') C.msgs.push({role:'ai', text: c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.'});
+    if(c !== 'cancelled') C.msgs.push({role:'ai', text: (c === 'appcheck' ? 'Firebase App Check is blocking the AI. In Firebase, open Security → App Check → APIs, and set Firebase AI Logic to Unenforced.' : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.') + (S.aiErr ? '\n\nDetails: ' + S.aiErr : '')});
   }finally{ C.busy = false; render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
 }
 
