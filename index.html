@@ -788,6 +788,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
+const APP_VERSION = 'v9 · Nov 24';
 const APPCHECK_DEBUG_TOKEN = '96B5F2A4-B412-498A-A1D2-FDA853DD9CA2'; // App Check debug token from Firebase (needed for the AI)
 const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 let gemini = null;
@@ -810,7 +811,9 @@ async function setupGemini(app){
     if(APPCHECK_DEBUG_TOKEN && !window.__testGeminiM){
       self.FIREBASE_APPCHECK_DEBUG_TOKEN = APPCHECK_DEBUG_TOKEN;
       const AC = await import(FB_SDK + 'firebase-app-check.js');
-      AC.initializeAppCheck(app, {provider: new AC.CustomProvider({getToken: async () => { throw new Error('Debug token only'); }}), isTokenAutoRefreshEnabled: true});
+      const ac = AC.initializeAppCheck(app, {provider: new AC.CustomProvider({getToken: async () => { throw new Error('Debug token only'); }}), isTokenAutoRefreshEnabled: true});
+      S.appCheck = 'starting';
+      AC.getLimitedUseToken(ac).then(() => { S.appCheck = 'ok'; }, e => { S.appCheck = 'failed'; S.appCheckErr = String((e && e.message) || e).slice(0, 300); });
     }
     const M = window.__testGeminiM || await import(FB_SDK + 'firebase-ai.js');
     gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend(), useLimitedUseAppCheckTokens: true})};
@@ -840,7 +843,7 @@ function geminiSample(){
       }catch(e){
         if(e && (e.code === 'cancelled' || e.code === 'invalid_json')) throw e;
         last = e; const msg = String((e && e.message) || e);
-        S.aiErr = msg.slice(0, 400);
+        S.aiErr = msg.slice(0, 400) + (S.appCheckErr ? ' | App Check: ' + S.appCheckErr : S.appCheck ? ' | App Check: ' + S.appCheck : ' | App Check: not set up in this version');
         if((e && e.code === 'api-not-enabled') || /has not been used in project|SERVICE_DISABLED|API_NOT_ENABLED|it is disabled/i.test(msg)) throw {code:'ai_off', message: msg};
         if(/app ?check/i.test(msg)) throw {code:'appcheck', message: msg};
       }
@@ -1933,7 +1936,7 @@ async function readRecipe(){
     const c = e && e.code;
     A.error = c === 'cancelled' ? '' : c === 'not_granted' || c === 'sampling_disabled' ? 'Automatic reading isn\'t allowed here. Use the Claude copy-and-paste option or enter it by hand.'
       : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet, or Google is still turning it on. Try again in a few minutes, or use the Claude copy-and-paste option.'
-      : c === 'appcheck' ? 'Firebase App Check is blocking the AI. In Firebase, open Security → App Check → APIs, and set Firebase AI Logic to Unenforced.'
+      : c === 'appcheck' ? 'Firebase App Check rejected the AI request.'
       : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.'
       : c === 'image_rejected' ? 'That photo couldn\'t be used. Try a clearer JPEG or PNG.'
       : c === 'invalid_json' ? 'The answer came back incomplete. Try again, or paste less text.'
@@ -2271,7 +2274,7 @@ async function chatSend(textArg){
     C.msgs.push({role:'ai', text: str(j && j.reply) || (lines.length ? 'Here\'s what I changed.' : 'Nothing needed to change.'), changes: lines});
   }catch(e){
     const c = e && e.code;
-    if(c !== 'cancelled') C.msgs.push({role:'ai', text: (c === 'appcheck' ? 'Firebase App Check is blocking the AI. In Firebase, open Security → App Check → APIs, and set Firebase AI Logic to Unenforced.' : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.') + (S.aiErr ? '\n\nDetails: ' + S.aiErr : '')});
+    if(c !== 'cancelled') C.msgs.push({role:'ai', text: (c === 'appcheck' ? 'Firebase App Check rejected the AI request.' : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.') + (S.aiErr ? '\n\nDetails: ' + S.aiErr : '')});
   }finally{ C.busy = false; render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
 }
 
@@ -2331,6 +2334,7 @@ function openModal(kind, id){
       <div class="drawer-me"><div class="avatar" aria-hidden="true">${esc((S.me && S.me.name || '?').slice(0,1).toUpperCase())}</div><div><b id="dlg-h">${esc(S.me ? S.me.name : 'Menu')}</b><span>${mm ? 'Host' : role === 'owner' ? 'Dish owner' : 'Helper'}</span></div><button class="drawer-close" data-act="close" aria-label="Close menu">×</button></div>
       ${items ? `<div class="menu">${items}</div>` : ''}
       <div class="menu menu-foot">${mi('switch','',IC.out,'Switch user','Sign in as someone else on this device')}</div>
+      <p class="sub" style="margin:0;color:var(--cream);opacity:.8">${esc(APP_VERSION)}</p>
     </div></div>`;
     const f = m.querySelector('.menu-item'); if(f) f.focus();
     return;
