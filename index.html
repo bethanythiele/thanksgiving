@@ -788,6 +788,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
+const APPCHECK_DEBUG_TOKEN = '96B5F2A4-B412-498A-A1D2-FDA853DD9CA2'; // App Check debug token from Firebase (needed for the AI)
 const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 let gemini = null;
 function fsAdapter(F, fdb){
@@ -806,8 +807,13 @@ function fsAdapter(F, fdb){
 }
 async function setupGemini(app){
   try{
+    if(APPCHECK_DEBUG_TOKEN && !window.__testGeminiM){
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = APPCHECK_DEBUG_TOKEN;
+      const AC = await import(FB_SDK + 'firebase-app-check.js');
+      AC.initializeAppCheck(app, {provider: new AC.CustomProvider({getToken: async () => { throw new Error('Debug token only'); }}), isTokenAutoRefreshEnabled: true});
+    }
     const M = window.__testGeminiM || await import(FB_SDK + 'firebase-ai.js');
-    gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend()})};
+    gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend(), useLimitedUseAppCheckTokens: true})};
     S.noAI = false; render();
   }catch(e){ gemini = null; }
 }
