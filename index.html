@@ -788,7 +788,24 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
-const APP_VERSION = 'v9 · Nov 24';
+const APP_VERSION = 'v10 · Nov 24';
+(function(){ // record what App Check pass the AI requests carry (for troubleshooting)
+  const f0 = window.fetch;
+  if(!f0) return;
+  window.fetch = function(input, init){
+    try{
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if(/firebasevertexai|generativelanguage/.test(url)){
+        const h = new Headers((init && init.headers) || (input && input.headers) || {});
+        const t = h.get('X-Firebase-AppCheck');
+        let info = t ? 'sent (' + t.length + ' chars)' : 'missing';
+        if(t){ try{ const pl = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))); info += ', app ' + String(pl.sub||'?').slice(-12) + ', expires in ' + Math.round(((pl.exp||0)*1000 - Date.now())/60000) + ' min'; }catch(e){ info += ', not a normal token'; } }
+        S.acHeader = info;
+      }
+    }catch(e){}
+    return f0.apply(this, arguments);
+  };
+})();
 const APPCHECK_DEBUG_TOKEN = '96B5F2A4-B412-498A-A1D2-FDA853DD9CA2'; // App Check debug token from Firebase (needed for the AI)
 const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 let gemini = null;
@@ -816,7 +833,7 @@ async function setupGemini(app){
       AC.getLimitedUseToken(ac).then(() => { S.appCheck = 'ok'; }, e => { S.appCheck = 'failed'; S.appCheckErr = String((e && e.message) || e).slice(0, 300); });
     }
     const M = window.__testGeminiM || await import(FB_SDK + 'firebase-ai.js');
-    gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend(), useLimitedUseAppCheckTokens: true})};
+    gemini = {M, ai: M.getAI(app, {backend: new M.GoogleAIBackend()})};
     S.noAI = false; render();
   }catch(e){ gemini = null; }
 }
@@ -843,7 +860,7 @@ function geminiSample(){
       }catch(e){
         if(e && (e.code === 'cancelled' || e.code === 'invalid_json')) throw e;
         last = e; const msg = String((e && e.message) || e);
-        S.aiErr = msg.slice(0, 400) + (S.appCheckErr ? ' | App Check: ' + S.appCheckErr : S.appCheck ? ' | App Check: ' + S.appCheck : ' | App Check: not set up in this version');
+        S.aiErr = msg.slice(0, 400) + (S.appCheckErr ? ' | App Check: ' + S.appCheckErr : S.appCheck ? ' | App Check: ' + S.appCheck : ' | App Check: not set up in this version') + ' | Pass: ' + (S.acHeader || 'unknown') + ' | ' + APP_VERSION;
         if((e && e.code === 'api-not-enabled') || /has not been used in project|SERVICE_DISABLED|API_NOT_ENABLED|it is disabled/i.test(msg)) throw {code:'ai_off', message: msg};
         if(/app ?check/i.test(msg)) throw {code:'appcheck', message: msg};
       }
