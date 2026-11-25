@@ -441,6 +441,11 @@ svg{flex:0 0 auto}
 .composer textarea:focus{outline:2px solid var(--orange)}
 .composer .btn{min-height:48px}
 .tt .field select,.tt .field input{min-height:44px}
+
+/* ---- v11: carry-over from Wednesday ---- */
+.carry-h{color:var(--warn)}
+.g-carry-h{font-size:.82rem;font-weight:700;color:var(--warn);padding:6px 0 2px;border-bottom:1px solid var(--line)}
+.g-row.carry .g-bar{border-style:dashed}
 </style>
 </head>
 <body>
@@ -788,7 +793,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
-const APP_VERSION = 'v10 · Nov 24';
+const APP_VERSION = 'v11 · Nov 24';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1156,6 +1161,7 @@ function taskRow(t, opts={}){
   const open = opts.forceOpen ? true : opts.open ? !S.collapsed.has(t.id) : S.expanded.has(t.id);
   const sc = displayTime(plan, t);
   const chips = [];
+  if(opts.carry) chips.push('<span class="chip late">From Wednesday</span>');
   if(opts.showRecipe !== false) chips.push(`<span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span>`);
   if(t.who==='h') chips.push(`<span class="chip helper">${s.assignee ? esc(personName(s.assignee)) : 'Helper job · open'}</span>`);
   else if(ownerOf(t.r) && ownerOf(t.r) !== S.key) chips.push(`<span class="chip helper">${esc(personName(ownerOf(t.r)))}'s dish</span>`);
@@ -1662,6 +1668,9 @@ function ovenCard(){
     ${nx ? `<div class="sub">Next in: <b>${esc(nx.title)}</b> · ${esc(fmtRel(sched(plan,nx,true)))}, ${nx.oven.temp}°F</div>` : ''}
   </section>`;
 }
+function carriedOver(tasks, day){
+  return day === 'thu' && now() >= at('thu','00:00') ? tasks.filter(t => t.day === 'wed' && !isDone(t) && !t.final) : [];
+}
 function planCard(tasks, title){
   const plan = S.plan, nowMs = now();
   const day = S.planDay || (nowMs < at('thu','00:00') ? 'wed' : 'thu');
@@ -1669,7 +1678,9 @@ function planCard(tasks, title){
   const hr = t => new Date(displayTime(plan,t)).getHours();
   const groups = [['Morning', t=>hr(t)<12], ['Afternoon', t=>hr(t)>=12&&hr(t)<17], ['Evening', t=>hr(t)>=17]];
   const mode = S.planMode || 'list';
-  const listHtml = groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t)).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>';
+  const carry = carriedOver(tasks, day);
+  const carryHtml = carry.length ? `<div class="group-h carry-h">From Wednesday <span class="sub">${carry.length} still to do</span></div><div class="tasks">${carry.sort((a,b)=>(a.who==='h'?dueOf(plan,a):sched(plan,a,true))-(b.who==='h'?dueOf(plan,b):sched(plan,b,true))).map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
+  const listHtml = carryHtml + (groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t)).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>');
   return `<section class="card" aria-labelledby="pl-h">
     <div class="card-h"><h2 id="pl-h">${esc(title)}</h2><div class="seg" role="group" aria-label="View as"><button data-act="planMode" data-v="list" aria-pressed="${mode==='list'}">${IC.list}<span>List</span></button><button data-act="planMode" data-v="timeline" aria-pressed="${mode==='timeline'}">${IC.tl}<span>Timeline</span></button></div></div>
     <div class="card-h"><div class="seg" role="group" aria-label="Day"><button data-act="planDay" data-v="wed" aria-pressed="${day==='wed'}">Wednesday</button><button data-act="planDay" data-v="thu" aria-pressed="${day==='thu'}">Thursday</button></div><span class="sub">${DAY_LABEL[day]}</span></div>
@@ -1695,6 +1706,9 @@ function gantt(tasks, day){
   const zoom = S.zoom || 'day';
   if(zoom === 'am') a1 = Math.max(a0 + H, at(day, '12:00'));
   if(zoom === 'pm') a0 = Math.min(a1 - H, at(day, '12:00'));
+  const carry = carriedOver(tasks, day), carryIds = new Set(carry.map(t => t.id));
+  const cStart = Math.max(a0, Math.min(nowMs, a1 - 15*60000));
+  const carryStart = t => cStart, carryLen = t => { if(t.who === 'h'){ const d = dueOf(plan, t); return d > cStart ? Math.min(d, a1) - cStart : (t.dur||5)*60000; } return len(t)*60000; };
   const span = a1 - a0, pct = ms => Math.max(0, Math.min(100, (ms - a0) / span * 100));
   const list = all.filter(t => startOf(t) + lenOf(t) > a0 && startOf(t) < a1).sort((a,b) => startOf(a) - startOf(b));
   const step = span > 9*H ? 2*H : H;
@@ -1709,22 +1723,26 @@ function gantt(tasks, day){
   let peak = 0, peakAt = null;
   for(const t of list){ const s = startOf(t), c = list.filter(o => startOf(o) <= s && s < startOf(o) + Math.max(lenOf(o), 60000)).length; if(c > peak){ peak = c; peakAt = s; } }
   const first = list[0], last = list.reduce((m,t) => Math.max(m, startOf(t)+lenOf(t)), 0);
-  const rows = list.map(t => {
-    const s = prog(t.id), done = !!s.done, io = inOven(t), st0 = startOf(t), ty = JOB_TYPES[jobType(t)];
+  const rowOf = t => {
+    const c = carryIds.has(t.id);
+    const s = prog(t.id), done = !!s.done, io = inOven(t), st0 = c ? carryStart(t) : startOf(t), ty = JOB_TYPES[jobType(t)];
     const late = !done && !active(t) && t.who==='mm' && !t.optional && nowMs - sched(plan,t,true) > 10*60000;
-    const when = t.who === 'h' ? dueLabel(plan, t) : (lenOf(t) ? `${fmtTime(st0)}–${fmtTime(st0+lenOf(t))}` : fmtTime(st0));
+    const L = c ? carryLen(t) : lenOf(t);
+    const when = c ? (t.who === 'h' ? 'From Wednesday · ' + dueLabel(plan, t) : 'From Wednesday · planned ' + fmtDT(sched(plan,t,true))) : t.who === 'h' ? dueLabel(plan, t) : (L ? `${fmtTime(st0)}–${fmtTime(st0+L)}` : fmtTime(st0));
     const who = t.who === 'h' ? (s.assignee ? personName(s.assignee) : 'Open') : (ownerOf(t.r) ? personName(ownerOf(t.r)) : '');
     const state = done ? 'Done' : io ? `In oven since ${fmtTime(s.inOvenAt)}` : started(t) ? `Started ${fmtTime(s.startedAt)}` : late ? 'Late' : '';
     const meta = [when, recipeOf(plan,t.r).short, t.oven ? t.oven.temp+'°F' : '', who, state].filter(Boolean).join(' · ');
-    const w = pct(st0 + lenOf(t)) - pct(st0);
+    const w = pct(st0 + L) - pct(st0);
     const label = done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`;
-    return `<li class="g-row${done?' done':''}${io?' live':''}${late?' late':''}" style="--tc:${ty.color}">
+    return `<li class="g-row${done?' done':''}${io?' live':''}${late?' late':''}${c?' carry':''}" style="--tc:${ty.color}">
       <div class="g-head"><button class="check sm${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
         <div class="g-txt"><span class="g-title">${esc(t.title)}</span><span class="g-meta">${esc(meta)}</span></div>
         <button class="vi g-vi" data-act="taskModal" data-id="${t.id}" aria-label="View instructions for ${esc(t.title)}"><span class="vi-ic" aria-hidden="true">${I_PLUS}</span>Instructions</button></div>
       <div class="g-track"><span class="g-bar" style="left:${pct(st0)}%;width:${Math.max(w, 1.4)}%"></span></div>
     </li>`;
-  }).join('');
+  };
+  const carryRows = carry.length ? `<li class="g-carry-h">From Wednesday · ${carry.length} still to do</li>` + carry.map(rowOf).join('') : '';
+  const rows = carryRows + list.map(rowOf).join('');
   const nowIn = nowMs > a0 && nowMs < a1 ? `<span class="g-now" style="left:${pct(nowMs)}%"><b>${esc(fmtTime(nowMs))}</b></span>` : '';
   const dz = dinnerAt(plan), dinIn = day === 'thu' && dz > a0 && dz <= a1 ? `<span class="g-dinner" style="left:${pct(dz)}%"><b>Dinner</b></span>` : '';
   const legend = `<div class="legend">${Object.values(JOB_TYPES).map(x => `<span class="lg"><i style="background:${x.color}"></i>${x.label}</span>`).join('')}</div>`;
