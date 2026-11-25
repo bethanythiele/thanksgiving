@@ -792,8 +792,8 @@ const FIREBASE_CONFIG = {
   appId: "1:568992142411:web:ae66b224824fd3b8d769ce"
 };
 
-const FB_SDK = 'https://www.gstatic.com/firebasejs/12.0.0/';
-const APP_VERSION = 'v11 · Nov 24';
+const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
+const APP_VERSION = 'v12 · Nov 24';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -858,7 +858,7 @@ function geminiSample(){
     for(const name of GEMINI_MODELS){
       if(opts.signal && opts.signal.aborted) throw {code:'cancelled'};
       try{
-        const model = gemini.M.getGenerativeModel(gemini.ai, {model: name, generationConfig: {responseMimeType: 'application/json'}});
+        const model = gemini.M.getGenerativeModel(gemini.ai, opts.urlContext ? {model: name, tools: [{urlContext: {}}]} : {model: name, generationConfig: {responseMimeType: 'application/json'}});
         const call = model.generateContent(parts);
         const res = opts.signal ? await Promise.race([call, new Promise((_, rej) => opts.signal.addEventListener('abort', () => rej({code:'cancelled'}), {once:true}))]) : await call;
         return looseJSON(res.response.text());
@@ -1837,20 +1837,21 @@ async function getSample(){
 }
 function renderAddDish(){
   if(S.noAI || (S.add && S.add.forceImport)) return renderImportDish();
-  const A = S.add || (S.add = {mode:'text', text:'', files:[], own: !isHost(), busy:false, status:'', error:''});
-  const photo = A.mode === 'photo';
+  const A = S.add || (S.add = {mode: gemini ? 'link' : 'text', text:'', url:'', files:[], own: !isHost(), busy:false, status:'', error:''});
+  const photo = A.mode === 'photo', link = A.mode === 'link', canLink = !!gemini;
   return `<div class="wrap"><section class="card add-card">
     <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
-    <p class="sub" style="margin:0">Paste a recipe or add a photo of it. The planner reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
-    <div class="seg" role="group" aria-label="How to add it"><button data-act="addMode" data-v="text" aria-pressed="${!photo}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo or screenshot</button></div>
+    <p class="sub" style="margin:0">${canLink ? 'Paste a link to the recipe, paste the recipe itself, or add a photo of it.' : 'Paste a recipe or add a photo of it.'} The planner reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
+    <div class="seg" role="group" aria-label="How to add it">${canLink ? `<button data-act="addMode" data-v="link" aria-pressed="${link}">Link</button>` : ''}<button data-act="addMode" data-v="text" aria-pressed="${!photo && !link}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo or screenshot</button></div>
     ${photo ? `<label class="field" for="add-files">Recipe photos (up to 4)<input id="add-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
       ${A.files.length ? `<p class="sub" style="margin:0">${A.files.length} photo${A.files.length>1?'s':''} ready: ${A.files.map(f=>esc(f.name)).join(', ')}</p>` : ''}`
+      : link ? `<label class="field" for="add-url">Recipe link<input id="add-url" type="url" inputmode="url" placeholder="https://…" value="${esc(A.url||'')}"></label>
+        <p class="sub" style="margin:0">Works with most public recipe pages. If a site blocks it, copy the recipe text into Paste text, or use a screenshot.</p>`
       : `<label class="field" for="add-text">Recipe text<textarea id="add-text" rows="12" placeholder="Paste the title, ingredients and instructions">${esc(A.text)}</textarea></label>`}
-    <div class="note"><b>Found it on a website?</b> Copy the recipe from the page and paste it here, or take a screenshot and use Photo. This page can't open links itself.</div>
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     ${A.busy ? `<div class="thinking" role="status"><span class="spinner" aria-hidden="true"></span><span>${esc(A.status || 'Reading the recipe…')}</span></div>` : ''}
-    <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : `<button class="btn primary" data-act="readRecipe">Read the recipe</button>`}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Enter it by hand instead</button></div>
+    <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : `<button class="btn primary" data-act="readRecipe">Analyze with AI and add to the plan</button>`}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Manually add to the plan</button></div>
     ${window.claude ? '' : `<button class="btn link" data-act="useImport">Or use Claude instead (copy and paste)</button>`}
   </section></div>`;
 }
@@ -1872,7 +1873,7 @@ function renderImportDish(){
     </ol>
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
-    <div class="btns"><button class="btn primary" data-act="importDish">Import dish</button><button class="btn ghost" data-act="manualRecipe">Enter it by hand instead</button></div>
+    <div class="btns"><button class="btn primary" data-act="importDish">Import dish</button><button class="btn ghost" data-act="manualRecipe">Manually add to the plan</button></div>
     ${S.noAI ? '' : `<button class="btn link" data-act="useAuto">Back to automatic reading</button>`}
   </section></div>`;
 }
@@ -1955,15 +1956,20 @@ function draftFromAI(j){
 async function readRecipe(){
   const A = S.add; A.error = '';
   const ta = document.getElementById('add-text'); if(ta) A.text = ta.value;
+  const ui = document.getElementById('add-url'); if(ui) A.url = ui.value.trim();
   const own = document.getElementById('add-own'); if(own) A.own = own.checked;
   const photo = A.mode === 'photo';
-  if(photo ? !A.files.length : A.text.trim().length < 40){ A.error = photo ? 'Add a photo of the recipe first.' : 'Paste the recipe, including its ingredients and instructions.'; render(); return; }
+  let link = A.mode === 'link' ? A.url : null;
+  if(!photo && !link){ const m = /^\s*(https?:\/\/\S+)\s*$/i.exec(A.text || ''); if(m && gemini) link = m[1]; }
+  if(A.mode === 'link' && !/^https?:\/\/\S+\.\S+/i.test(link || '')){ A.error = 'Paste the full link, starting with https://'; render(); return; }
+  if(!link && (photo ? !A.files.length : A.text.trim().length < 40)){ A.error = photo ? 'Add a photo of the recipe first.' : 'Paste the recipe, including its ingredients and instructions.'; render(); return; }
   const sample = await getSample();
   if(!sample){ A.error = 'Automatic reading isn\'t available right now. Use the Claude copy-and-paste option, or enter the dish by hand.'; render(); return; }
   A.busy = true; A.status = 'Reading the recipe and fitting it into the day. This can take a minute.'; A.ctl = new AbortController(); render();
   try{
-    const j = await sample.json(recipePrompt(A.text, photo), Object.assign({signal: A.ctl.signal, modelTier:'default'}, photo ? {images: A.files.slice(0,4)} : {}));
-    if(!j || typeof j !== 'object' || j.error){ A.error = (j && j.error) ? `That didn't work: ${j.error}` : 'No recipe was found there. Try pasting the text.'; return; }
+    const input = link ? `Open this web page and read the recipe on it: ${link}\nUse only what the page says; if you can't open it or it has no recipe, reply with the error JSON.` : A.text;
+    const j = await sample.json(recipePrompt(input, photo), Object.assign({signal: A.ctl.signal, modelTier:'default'}, photo ? {images: A.files.slice(0,4)} : {}, link ? {urlContext: true} : {}));
+    if(!j || typeof j !== 'object' || j.error){ A.error = (j && j.error) ? `That didn't work: ${j.error}` + (link ? ' Try copying the recipe text into Paste text instead.' : '') : 'No recipe was found there. Try pasting the text.'; return; }
     const d = draftFromAI(j);
     S.draft = {kind:'recipe', mode:'new', plan:d.plan, base:clone(S.plan), recipeId:d.recipeId, own: isHost() ? false : A.own, ownerKey: isHost() ? null : (A.own ? S.key : null)};
     S.add = null; S.openTask = null; S.view = 'editRecipe'; window.scrollTo(0,0);
@@ -2490,6 +2496,7 @@ document.addEventListener('input', e => {
   if(el.name === 'dish'){ S.landingDishes = [...document.querySelectorAll('input[name="dish"]:checked')].map(x => x.value); el.closest('.dish').classList.toggle('on', el.checked); }
   if(el.name === 'newdish'){ S.landingNew = el.checked; el.closest('.dish').classList.toggle('on', el.checked); }
   if(el.id === 'add-text' && S.add) S.add.text = el.value;
+  if(el.id === 'add-url' && S.add) S.add.url = el.value;
   if(el.id === 'import-code' && S.add) S.add.code = el.value;
   if(el.id === 'chat-input' && S.chat) S.chat.input = el.value;
   if(el.closest && el.closest('.tt') && S.ttId !== undefined){ const pv = document.getElementById('tt-preview'); if(pv) pv.innerHTML = ttPreview(S.ttId); }
@@ -2580,7 +2587,7 @@ document.addEventListener('click', e => {
     case 'saveAndGo': if(S.draft && (dirty() || S.draft.mode === 'new')) commitDraft(); S.draft = null; afterLeave(v); break;
     case 'declineSub': if(S.draft && S.draft.subId){ removeSub(S.draft.subId); S.draft = null; toast('Declined. It won\'t be added.'); go('recipes', true); } break;
     case 'reviewSub': openReview(id); break;
-    case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; S.add.mode = v; S.add.error = ''; render(); } break;
+    case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; const u = document.getElementById('add-url'); if(u) S.add.url = u.value; S.add.mode = v; S.add.error = ''; render(); } break;
     case 'readRecipe': readRecipe(); break;
     case 'importDish': importDish(); break;
     case 'useImport': S.add = {code:'', own: !isHost(), error:'', showPrompt:false, forceImport:true}; render(); break;
