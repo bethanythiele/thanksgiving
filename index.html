@@ -919,7 +919,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v16 · Nov 24';
+const APP_VERSION = 'v17 · Nov 25';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1295,6 +1295,8 @@ function taskRow(t, opts={}){
   if(t.optional) chips.push('<span class="chip">Optional</span>');
   const lateMin = mins(now() - sched(plan,t,true));
   if(!done && !io && !stt && t.who==='mm' && lateMin > 10) chips.push(`<span class="chip late">${dur(lateMin)} late</span>`);
+  const lateDue = t.who==='h' ? mins(now() - dueOf(plan,t)) : 0;
+  if(!done && t.who==='h' && lateDue > 0) chips.push(`<span class="chip late">${dur(lateDue)} past its deadline</span>`);
   if(stt) chips.push(`<span class="chip ovenchip">Started ${fmtTime(s.startedAt)}</span>`);
   if(io) chips.push(`<span class="chip ovenchip">In oven since ${fmtTime(s.inOvenAt)}</span>`);
   if(done && s.doneBy && s.doneBy !== S.key && S.people[s.doneBy]) chips.push(`<span class="chip">Done by ${esc(personName(s.doneBy))}</span>`);
@@ -1318,7 +1320,7 @@ function taskRow(t, opts={}){
   return `<div class="task${done?' done':''}">
     <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
     <div class="tmain">
-      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
+      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay && !(t.who==='h' && dayOf(dueOf(plan,t)) !== t.day) ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
       ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>` + viLink(t.id, open, opts.open)}
       ${timer}
       ${open ? detail(t) : ''}
@@ -1732,7 +1734,7 @@ function renderHelper(){
   const mine = hj.filter(t => prog(t.id).assignee === me);
   const doing = mine.filter(t => !isDone(t)).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const did = hj.filter(t => isDone(t) && (prog(t.id).assignee === me || prog(t.id).doneBy === me));
-  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee && dueOf(plan,t) > nowMs - 30*60000);
+  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee);
   const ready = open.filter(t => fromOf(plan,t) <= nowMs + 30*60000).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const later = open.filter(t => fromOf(plan,t) > nowMs + 30*60000).sort((a,b)=>fromOf(plan,a)-fromOf(plan,b));
   return `<div class="wrap">
@@ -1922,6 +1924,24 @@ function gantt(tasks, day){
 }
 
 /* ============ HOST DASHBOARD ============ */
+/* Up next: never hides a step until it's checked off. Everything that should already have started (or is under way or in the oven) always shows, however many there are; then the next few after that. */
+function upNextKey(plan, t){ return t.who === 'h' ? dueOf(plan, t) - (t.dur||5)*60000 : sched(plan, t, true); }
+function upNextList(tasks, more){
+  const plan = S.plan, nowMs = now(), key = t => upNextKey(plan, t);
+  const open = tasks.filter(t => !isDone(t) && !t.final).sort((a,b) => key(a) - key(b));
+  const due = open.filter(t => inOven(t) || started(t) || key(t) <= nowMs);
+  return due.concat(open.filter(t => !due.includes(t)).slice(0, more));
+}
+function upNextCard(list, emptyText){
+  const plan = S.plan, nowMs = now();
+  const behind = list.filter(t => !inOven(t) && !started(t) && (t.who === 'h' ? dueOf(plan,t) : sched(plan,t,true) + 10*60000) < nowMs).length;
+  const nextUp = list.find(t => !inOven(t) && !started(t) && upNextKey(plan,t) > nowMs);
+  const sub = behind ? `<span class="pill crit">${behind} behind</span>` : nextUp ? `<span class="sub">${esc(relTo(upNextKey(plan,nextUp)))}</span>` : '';
+  if(!list.length && !emptyText) return '';
+  return `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2>${sub}</div>
+    <div class="tasks">${list.length ? list.map((t,i)=>taskRow(t,{withDay:true, open:i===0})).join('') : `<p class="empty">${esc(emptyText)}</p>`}</div></section>`;
+}
+
 function renderDashboard(){
   const plan = S.plan, nowMs = now();
   const pr = progress(), pw = progress(t=>t.day==='wed'), pt = progress(t=>t.day==='thu');
@@ -1939,9 +1959,7 @@ function renderDashboard(){
       <div class="mini"><span>Thursday</span><b class="tnum">${pt.nd}/${pt.n}</b><div class="prog"><i style="width:${pt.pct}%"></i></div></div>
     </div>
   </section>`;
-  const upcoming = plan.tasks.filter(t => t.who==='mm' && !isDone(t) && !inOven(t) && !t.optional).sort((a,b)=>sched(plan,a,true)-sched(plan,b,true)).slice(0,4);
-  const nextHtml = `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2><span class="sub">${upcoming[0] ? esc(relTo(sched(plan,upcoming[0],true))) : ''}</span></div>
-    <div class="tasks">${upcoming.length ? upcoming.map((t,i)=>taskRow(t,{withDay:true, open:i===0})).join('') : '<p class="empty">Nothing left on the list.</p>'}</div></section>`;
+  const nextHtml = upNextCard(upNextList(plan.tasks, 4), 'Nothing left on the list.');
   const people = Object.entries(S.people).filter(([k,p]) => roleOf(p) !== 'host');
   const hj = plan.tasks.filter(t => t.who==='h');
   const hDone = hj.filter(isDone).length, hClaimed = hj.filter(t => !isDone(t) && prog(t.id).assignee).length;
@@ -1982,9 +2000,7 @@ function renderOwner(){
   const pendHtml = pend.length ? `<section class="card"><h2>Waiting for the host</h2>${pend.map(([id,x]) => `<div class="ritem"><span class="tile" aria-hidden="true">${esc((x.recipe.short||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(x.recipe.name)}</b><div class="sub">Sent ${esc(fmtRel(x.at))}. It joins the plan once the host accepts it.</div></div><span></span></div>`).join('')}</section>` : '';
   const empty = !mine.length && !pend.length ? `<section class="card"><h2>No dishes yet</h2><p class="sub" style="margin:0">Pick a dish you're making from the sign-in screen, or add a new one.</p><div class="btns"><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button><button class="btn" data-act="switch">Pick a dish</button></div></section>` : '';
   const al = liveAlerts(myTask);
-  const upcoming = tasks.filter(t => !isDone(t) && !inOven(t) && !t.optional && t.who==='mm').sort((a,b)=>sched(plan,a,true)-sched(plan,b,true)).slice(0,3);
-  const nextHtml = upcoming.length ? `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2><span class="sub">${esc(relTo(sched(plan,upcoming[0],true)))}</span></div>
-    <div class="tasks">${upcoming.map((t,i)=>taskRow(t,{withDay:true, open:i===0})).join('')}</div></section>` : '';
+  const nextHtml = upNextCard(upNextList(tasks, 3), '');
   return `<div class="wrap split"><div class="col">${empty}${hero}${pendHtml}${alertsCard(al)}${nextHtml}${tasks.length ? planCard(tasks, 'Your plan') : ''}</div><aside class="rail">${ovenCard()}</aside></div>`;
 }
 
