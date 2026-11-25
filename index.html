@@ -528,6 +528,50 @@ body.has-nav .actionbar{bottom:calc(var(--navh) - 30px);padding-bottom:46px;bord
   .t2-cap{grid-column:2;margin-left:0}
 }
 @media (min-width:720px){ .t2{--lab:196px} }
+/* ---- v16: AI review step ---- */
+.review{max-width:820px;margin:0 auto;padding-bottom:96px}
+.thinking-row{display:flex;gap:12px;align-items:center}
+.fitrow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.cmp-day{display:grid;gap:4px}
+.cmp-dh{display:flex;gap:8px;align-items:baseline}
+.cmp{position:relative;--lab:52px}
+.cmp .t2-axis .t2-plot{left:var(--lab)}
+.cmp-row{display:grid;grid-template-columns:var(--lab) 1fr;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}
+.cmp-row:last-child{border-bottom:0}
+.cmp-l{font-size:.76rem;font-weight:600;color:var(--muted)}
+.cmp-row .t2-track{margin:0}
+.cmp .t2-bar{cursor:default}
+.cmp-none{position:absolute;top:-1px;font-size:.76rem}
+.clist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.citem{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:4px;background:var(--white)}
+.citem.del{background:var(--bg)}
+.citem.del b{text-decoration:line-through;color:var(--muted)}
+.citem-h{display:flex;gap:8px;align-items:baseline}
+.cbadge{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto}
+.cbadge.add{background:var(--good-soft);color:var(--good)}
+.cbadge.chg{background:var(--yellow2);color:var(--ink)}
+.cbadge.del{background:var(--crit-soft);color:var(--crit)}
+.clines{margin:0;padding-left:18px;font-size:.88rem}
+.cwhy{margin:0;font-size:.84rem;color:var(--muted);font-style:italic}
+.cwhy::before{content:"Why: ";font-style:normal;font-weight:600}
+.csteps summary{cursor:pointer;color:var(--orange-ink);font-weight:600;font-size:.86rem}
+.csteps ol{margin:6px 0 0;padding-left:20px;font-size:.88rem}
+.csteps ol.old{color:var(--muted);text-decoration:line-through}
+.csteps .sub{margin:6px 0 0}
+.cother{margin:14px 0 6px;font-size:1rem}
+.bub-h{display:block;margin-bottom:2px}
+.review .chat-card .chat-log{max-height:none;overflow:visible}
+.pick{font:inherit;font-size:.86rem;font-weight:500;color:var(--ink);background:var(--yellow2);border:0;border-radius:999px;padding:7px 12px;cursor:pointer;text-align:left;line-height:1.25}
+.pick:hover{background:var(--orange2)}
+.ai-sum{background:var(--orange2)}
+.ai-sum-h{display:flex;align-items:center;gap:8px;color:var(--orange-ink)}
+.ai-sum-h svg{width:20px;height:20px}
+.ai-sum p{margin:0;line-height:1.4}
+.review .rv-log:empty{display:none}
+.rv-bar .btns{flex-wrap:nowrap;margin-left:auto}
+.rv-bar .btn{padding-left:14px;padding-right:14px}
+.review{padding-bottom:150px}
+body.has-nav .review{padding-bottom:230px}
 </style>
 </head>
 <body>
@@ -875,7 +919,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v15 · Nov 24';
+const APP_VERSION = 'v16 · Nov 24';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1427,7 +1471,7 @@ function impactHtml(){
   return `<div class="impact">
     <div class="card-h"><h2>What this changes</h2>${dirty() ? '<span class="pill warn">Not saved</span>' : '<span class="pill neutral">No changes yet</span>'}</div>
     <div>${finishLine}${pf !== pfBase ? ` <span class="sub">(was ${esc(fmtTime(pfBase))})</span>` : ''}</div>
-    ${!S.noAI && d.kind === 'recipe' && d.recipeId !== 'general' && iss.some(i => !baseKeys.has(i.text)) ? `<div class="btns"><button class="btn small primary" data-act="fixAI" ${S.fixing?'disabled':''}>${S.fixing ? 'Working on it…' : 'Fix the timing automatically'}</button></div>` : ''}
+    ${!S.noAI && d.kind === 'recipe' && d.recipeId !== 'general' && iss.some(i => !baseKeys.has(i.text)) ? `<div class="btns"><button class="btn small primary" data-act="fixAI">Fix the timing with AI</button></div>` : ''}
     <div><h3>Conflicts ${iss.length ? `<span class="sub">${iss.length}</span>` : ''}</h3>
       ${iss.length ? `<div class="alerts">${iss.map(i=>`<div class="alert ${i.lv}"><p>${baseKeys.has(i.text)?'':'<b class="newtag">New</b> '}${esc(i.text)}</p></div>`).join('')}</div>` : '<p class="empty">No conflicts. Equipment, oven space and timing all fit.</p>'}
     </div>
@@ -1441,6 +1485,7 @@ function saveBar(){
   let label = 'You have unsaved changes', btns;
   if(mode === 'new'){ label = isHost() ? 'Ready to add it?' : 'The host reviews new dishes before they join the plan.'; btns = `<button class="btn ghost" data-act="discard">Cancel</button><button class="btn primary" data-act="saveDraft">${isHost() ? 'Add to plan' : 'Send to host'}</button>`; }
   else if(mode === 'review'){ label = 'Accept this dish into the plan?'; btns = `<button class="btn ghost" data-act="declineSub">Decline</button><button class="btn primary" data-act="saveDraft">Accept</button>`; }
+  else if(recipeChanged(d) && !S.noAI){ label = 'You changed the recipe. Update the plan steps to match?'; btns = `<button class="btn ghost" data-act="discard">Discard</button><button class="btn" data-act="saveDraft">Save as is</button><button class="btn primary" data-act="aiUpdate">Update steps with AI</button>`; }
   else { if(!dt) label = 'No unsaved changes'; btns = `<button class="btn ghost" data-act="discard" ${dt?'':'disabled'}>Discard</button><button class="btn primary" data-act="saveDraft" ${dt?'':'disabled'}>Save changes</button>`; }
   return `<div class="savebar" role="region" aria-label="Save changes"><div class="savebar-in"><span>${esc(label)}</span><div class="btns">${btns}</div></div></div>`;
 }
@@ -1506,8 +1551,8 @@ function renderEditRecipe(){
   if(!r) return renderRecipesAdmin();
   const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
   const canAI = !S.noAI && !isGen;
-  const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><div class="btns">${canAI ? `<button class="btn small primary" data-act="regenSteps" ${S.regen?'disabled':''}>${S.regen ? 'Rebuilding…' : 'Rebuild from recipe'}</button>` : ''}<button class="btn small" data-act="addTask">Add a plan step</button></div></div>
-      ${canAI ? '<p class="sub" style="margin:0">Changed the ingredients or method? "Rebuild from recipe" rewrites this dish\'s steps, helper jobs and oven times to match, and fits them around everything else. Nothing is saved until you save.</p>' : ''}
+  const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><div class="btns">${canAI ? `<button class="btn small primary" data-act="aiUpdate">Update steps with AI</button>` : ''}<button class="btn small" data-act="addTask">Add a plan step</button></div></div>
+      ${canAI ? '<p class="sub" style="margin:0">Changed the ingredients or method? "Update steps with AI" updates this dish\'s steps, helper jobs and oven times to match and fits them around everything else. You\'ll see every change and approve it before anything is saved.</p>' : ''}
       <p class="sub" style="margin:0">${mode === 'edit' ? 'The timed steps on the dashboards and the helper list.' : 'These were written from the recipe and placed in the day.'} Edit any of them. The panel shows what each change does to the rest of the plan.</p>
       <div class="tforms">${tasks.length ? tasks.map(t=>taskForm(plan,t)).join('') : '<p class="empty">No plan steps yet.</p>'}</div>
     </section>`;
@@ -2116,52 +2161,6 @@ function manualRecipe(){
   S.draft = {kind:'recipe', mode:'new', plan:p, base:clone(S.plan), recipeId:k, own: isHost() ? false : own, ownerKey: isHost() ? null : (own ? S.key : null)};
   S.add = null; S.view = 'editRecipe'; render(); window.scrollTo(0,0);
 }
-async function fixWithAI(){
-  const d = S.draft; if(!d) return;
-  const sample = await getSample();
-  if(!sample){ toast('Automatic fixing isn\'t available right now.'); return; }
-  const issues = planIssues(d.plan).map(i => '- ' + i.text).join('\n');
-  const mine = d.plan.tasks.filter(t => t.r === d.recipeId && t.who === 'mm').map(t => `- id ${t.id} | ${t.day} ${t.t} for ${len(t)} min${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.slots||1} spot(s)` : ''} | ${t.title}`).join('\n');
-  const prompt = `Reschedule this dish's cook steps so they fit around the other steps with no conflicts. Keep its own order, keep make-ahead steps on Wednesday where possible, and finish by Thursday ${d.plan.dinner}.
-KITCHEN: ${kitchenSummary(d.plan)}
-OTHER COOK STEPS (fixed):
-${scheduleSummary(d.plan, d.recipeId)}
-THIS DISH'S STEPS (you may move these):
-${mine}
-CONFLICTS NOW:
-${issues}
-Reply with only JSON: {"moves":[{"id":"step id","day":"wed|thu","t":"HH:MM"}]} listing only the steps you move.`;
-  S.fixing = true; render();
-  try{
-    const j = await sample.json(prompt, {modelTier:'default'});
-    let n = 0;
-    for(const m of (j && Array.isArray(j.moves) ? j.moves : [])){ const t = findTask(d.plan, str(m.id)); const tv = validHM(m.t); if(t && t.r === d.recipeId && t.who === 'mm' && tv){ t.day = m.day === 'wed' ? 'wed' : 'thu'; t.t = tv; n++; } }
-    toast(n ? `Moved ${n} step${n>1?'s':''}. Check the panel to see what changed.` : 'No better time was found. Try moving steps yourself.');
-  }catch(e){ toast(e && e.code === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet.' : e && e.code === 'rate_limited' ? 'The AI is busy. Try again shortly.' : 'Couldn\'t get suggestions right now.'); }
-  finally{ S.fixing = false; render(); }
-}
-
-async function regenSteps(){
-  const d = S.draft; if(!d || d.recipeId === 'general') return;
-  const sample = await getSample();
-  if(!sample){ toast('Automatic rebuilding isn\'t available right now.'); return; }
-  const r = d.plan.recipes[d.recipeId];
-  const cur = d.plan.tasks.filter(t => t.r === d.recipeId).map(t => `- ${t.who === 'h' ? 'helper' : 'cook'} | ${t.day} ${t.t} ${len(t)} min${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.min}-${t.oven.max} min` : ''} | ${t.title}`).join('\n');
-  const text = `${r.name}\n\nINGREDIENTS\n${(r.ingredients||[]).map(g => g.g + ':\n' + g.items.map(i => '- ' + i).join('\n')).join('\n')}\n\nMETHOD\n${(r.steps||[]).map((st,i) => `${i+1}. ${st.h}: ${st.x}`).join('\n')}\n\nCURRENT PLAN STEPS FOR THIS DISH (keep their timing where it still makes sense):\n${cur || '(none)'}`;
-  const prompt = recipePrompt(text, false).replace(/\nEXISTING COOK STEPS[^]*?\n\nRULES/, `\nEXISTING COOK STEPS FOR OTHER DISHES (day start-end, oven, tools | dish: step):\n${scheduleSummary(d.plan, d.recipeId) || '(none)'}\n\nRULES`);
-  S.regen = true; render();
-  try{
-    const j = await sample.json(prompt, {modelTier:'default'});
-    if(!j || !Array.isArray(j.tasks) || !j.tasks.length){ toast('No steps came back. Try again.'); return; }
-    const hadProgress = d.plan.tasks.some(t => t.r === d.recipeId && S.tasks[t.id] && (S.tasks[t.id].done || S.tasks[t.id].assignee));
-    d.plan.tasks = d.plan.tasks.filter(t => t.r !== d.recipeId).concat(aiTasks(j.tasks, d.recipeId, d.plan));
-    if(Array.isArray(j.meta) && j.meta.length) r.meta = arr(j.meta);
-    S.openTask = null;
-    toast(hadProgress ? 'Steps rebuilt. Checkmarks and claimed jobs on the old steps won\'t carry over. Review, then save.' : 'Steps rebuilt. Check the panel to see what changed, then save.');
-  }catch(e){ const c = e && e.code; toast(c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again later.' : 'Couldn\'t rebuild the steps right now.'); }
-  finally{ S.regen = false; render(); }
-}
-
 /* ============ SAVE / SUBMIT A DRAFT ============ */
 function setOwner(rk, key){
   for(const [k,p] of Object.entries(S.people)) if(Array.isArray(p.dishes) && p.dishes.includes(rk) && k !== key) savePerson(k, {dishes: p.dishes.filter(r => r !== rk)});
@@ -2212,7 +2211,8 @@ function reviewQueue(){
 
 /* ============ PLAN CHANGES (shared by the assistant and time editing) ============ */
 function canEditTask(t){ return isHost() || myDishes().includes(t.r); }
-function applyOps(plan, ops){
+function applyOps(plan, ops, why){
+  const W = (op, t) => { if(why && t && op.why) why[t.id] = str(op.why).slice(0, 200); };
   const lines = [], toolIds = new Set(plan.kitchen.tools.map(x => x.id));
   const find = ref => { if(!ref) return null; const r = str(typeof ref === 'object' ? ref.id : ref); return plan.tasks.find(t => t.id === r) || plan.tasks.find(t => t.title.toLowerCase() === r.toLowerCase()) || null; };
   const setFields = (t, f) => {
@@ -2246,18 +2246,18 @@ function applyOps(plan, ops){
     if(op.op === 'update'){
       const t = find(op.id); if(!t) continue;
       const before = when(t), title0 = t.title;
-      setFields(t, op.set || {});
+      setFields(t, op.set || {}); W(op, t);
       const after = when(t);
       lines.push(before !== after ? `Moved "${t.title}": ${before} → ${after}` : `Updated "${title0}"`);
     } else if(op.op === 'add'){
       const x = op.task || {};
       const t = {id: rid('x-'), r: plan.recipes[x.r] ? x.r : 'general', who: x.who === 'h' ? 'h' : 'mm', day:'thu', t:'12:00', dur:15, title:'New step', steps:[], uses:{}};
       if(t.who === 'h') t.from = [x.day === 'wed' ? 'wed' : 'thu', validHM(x.t) || '08:00'];
-      setFields(t, x);
+      setFields(t, x); W(op, t);
       plan.tasks.push(t);
       lines.push(`Added "${t.title}" (${when(t)})`);
     } else if(op.op === 'delete'){
-      const t = find(op.id); if(!t || t.final) continue;
+      const t = find(op.id); if(!t || t.final) continue; W(op, t);
       const at0 = sched(plan, t);
       plan.tasks = plan.tasks.filter(o => o !== t);
       for(const o of plan.tasks){
@@ -2370,12 +2370,8 @@ function chatPrompt(plan, msgs){
   return `You are the planning assistant inside a home Thanksgiving cooking planner. The host tells you in plain language how they want the plan to change, or asks a question about it. You change the plan by returning operations on its steps.
 
 Think through knock-on effects before you answer, and fix them in the same reply:
-- Equipment: each tool has a count. Two steps can't use more than that at once. If a change keeps a pot or burner busy longer, move or change the steps that needed it.
-- Oven: one temperature at a time, at most ${plan.kitchen.ovenSpots} sheet-pan spots.
-- Order: a step can't start before the steps it "needs" are done. Helper jobs ("who":"h") are prep for the cook step they are "for" and must be done "before" minutes ahead of it. When you move a cook step earlier, move its helper jobs' "from" earlier too, and delete helper jobs that no longer make sense.
-- Food: if something is made ahead, add the steps it now needs (cool, cover and refrigerate; reheat, with the tool or oven it uses, before serving) and remove steps that no longer make sense.
-- Everything must be ready by dinner (${plan.dinner} Thursday). Keep all other steps as they are. Don't change steps marked done unless asked.
-- Helpers never do oven work, stovetop cooking, tasting or seasoning.
+${planRules(plan)}
+- Keep all other steps as they are.
 
 PLAN (JSON; times are 24h; "who":"mm" = cook step with day, start "t" and "dur" minutes; "who":"h" = helper job with earliest start "from" and a deadline from "for" or "due"):
 ${planForAI(plan)}
@@ -2443,6 +2439,233 @@ async function chatSend(textArg){
   }finally{ C.busy = false; render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
 }
 
+/* ============ AI REVIEW: propose recipe-driven plan changes, then approve ============ */
+function planRules(plan){
+  return `- Equipment: each tool has a count. Two steps can't use more than that at once. If a change keeps a pot or burner busy longer, move or change the steps that needed it.
+- Oven: one temperature at a time, at most ${plan.kitchen.ovenSpots} sheet-pan spots.
+- Order: a step can't start before the steps it "needs" are done. Helper jobs ("who":"h") are prep for the cook step they are "for" and must be done "before" minutes ahead of it. When you move a cook step earlier, move its helper jobs' "from" earlier too, and delete helper jobs that no longer make sense.
+- Food: if something is made ahead, add the steps it now needs (cool, cover and refrigerate; reheat, with the tool or oven it uses, before serving) and remove steps that no longer make sense.
+- Everything must be ready by dinner (${plan.dinner} Thursday). Don't change steps marked done unless asked.
+- Helpers never do oven work, stovetop cooking, tasting or seasoning.`;
+}
+const OPS_SCHEMA = `{"op":"update","id":"step id","why":"short reason","set":{"day":"thu","t":"12:30","dur":40,"title":"...","steps":["..."],"uses":{"toolId":1},"oven":{"temp":350,"min":30,"max":35,"slots":1,"check":"..."},"from":["thu","09:00"],"for":{"id":"cook step id","before":10},"needs":["step id"]}},
+  {"op":"add","why":"short reason","task":{"r":"recipe id","who":"mm","day":"thu","t":"13:00","dur":20,"title":"...","steps":["..."],"uses":{},"oven":null,"needs":["step id"]}},
+  {"op":"delete","id":"step id","why":"short reason"}`;
+function recipeText(r){
+  if(!r) return '(this dish is new)';
+  return `${r.name}\nQUICK FACTS: ${(r.meta||[]).join('; ') || '-'}\nNOTES: ${(r.notes||[]).join('; ') || '-'}\nINGREDIENTS\n${(r.ingredients||[]).map(g => g.g + ':\n' + g.items.map(i => '- ' + i).join('\n')).join('\n')}\nMETHOD\n${(r.steps||[]).map((st,i) => `${i+1}. ${st.h}: ${st.x}`).join('\n')}`;
+}
+function recipeChanged(d){ if(!d || d.kind !== 'recipe' || d.recipeId === 'general') return false; return JSON.stringify(d.plan.recipes[d.recipeId]) !== JSON.stringify(d.base.recipes[d.recipeId]); }
+function proposePrompt(d, kind){
+  const plan = d.plan, k = d.recipeId, r = plan.recipes[k], before = recipeText(d.base.recipes[k]), now = recipeText(r), same = before === now;
+  const issues = planIssues(plan).map(i => '- ' + i.text).join('\n') || '(none)';
+  const task = kind === 'fix'
+    ? `The steps for "${r.name}" (recipe id "${k}") clash with the rest of the plan. Reschedule so there are no conflicts: prefer moving this dish's steps, keep its own order, keep make-ahead steps on Wednesday where possible. Move other dishes' steps only if there's no other way.`
+    : same
+    ? `The host asked you to check the plan steps for "${r.name}" (recipe id "${k}") against its recipe and fix anything that doesn't match it or doesn't fit the day.\n\nRECIPE:\n"""\n${now}\n"""`
+    : `The host edited the recipe for "${r.name}" (recipe id "${k}"). Update that dish's plan steps so they match the new version, and fix any knock-on effects on the rest of the plan.\n\nRECIPE BEFORE THE EDIT:\n"""\n${before}\n"""\n\nRECIPE NOW:\n"""\n${now}\n"""\n\nCompare the two versions and change only what the edit affects: step instructions and quantities, durations, oven temperature and times, equipment, helper prep jobs. Add steps the new recipe needs and delete ones it no longer has.`;
+  return `You are the planning assistant inside a home Thanksgiving cooking planner. ${task}
+
+- Keep existing step ids for steps that still exist (update them; don't delete and re-add), so progress carries over.
+- Prefer changing this dish's steps. Only move another dish's steps if a conflict leaves no other choice.
+${planRules(plan)}
+
+PLAN (JSON; times are 24h; "who":"mm" = cook step with day, start "t" and "dur" minutes; "who":"h" = helper job with earliest start "from" and a deadline from "for" or "due"):
+${planForAI(plan)}
+
+CURRENT CONFLICTS:
+${issues}
+
+Reply with only JSON:
+{"summary":"2-4 short, plain sentences for the host: what you changed and why","changes":[
+  ${OPS_SCHEMA}
+]}
+In "set", include only the fields you change. Use "oven": null to stop a step using the oven. Times are "HH:MM" in multiples of 5. Use existing step ids and tool ids. If nothing should change, return "changes": [].`;
+}
+function reviewChatPrompt(d, msgs){
+  const plan = d.plan, k = d.recipeId, r = plan.recipes[k];
+  const hist = msgs.slice(0, -1).slice(-8).map(m => (m.role === 'user' ? 'HOST: ' : 'ASSISTANT: ') + m.text + (m.changes && m.changes.length ? ' [changes: ' + m.changes.join('; ') + ']' : '')).join('\n');
+  const issues = planIssues(plan).map(i => '- ' + i.text).join('\n') || '(none)';
+  return `You are the planning assistant inside a home Thanksgiving cooking planner. The host edited the recipe for "${r.name}" (recipe id "${k}") and you proposed changes to the plan to match. Your proposal is already applied in the PLAN below. The host is reviewing it and is now telling you what to do differently. Make exactly what they ask, plus any knock-on fixes it needs.
+
+RECIPE NOW:
+"""
+${recipeText(r)}
+"""
+
+${planRules(plan)}
+
+PLAN (JSON; times are 24h; "who":"mm" = cook step with day, start "t" and "dur" minutes; "who":"h" = helper job with earliest start "from" and a deadline from "for" or "due"):
+${planForAI(plan)}
+
+CURRENT CONFLICTS:
+${issues}
+
+CONVERSATION SO FAR:
+${hist}
+HOST: ${msgs[msgs.length - 1].text}
+
+Reply with only JSON:
+{"reply":"1-3 short, plain sentences: what you changed, or the answer to the question","changes":[
+  ${OPS_SCHEMA}
+]}
+In "set", include only the fields you change. Use "oven": null to stop a step using the oven. Times are "HH:MM" in multiples of 5. Use existing step ids and tool ids. If nothing should change, return "changes": [].`;
+}
+function aiErrText(e){
+  const c = e && e.code;
+  return (c === 'appcheck' ? 'Firebase App Check rejected the AI request.' : c === 'ai_off' ? 'The AI isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The AI is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'The answer came back garbled. Try again.' : 'Something went wrong. Try again.') + (c && S.aiErr ? ' Details: ' + S.aiErr : '');
+}
+async function aiPropose(kind){
+  const d = S.draft; if(!d || d.kind !== 'recipe') return;
+  syncInputs();
+  const sample = await getSample();
+  if(!sample){ toast('The AI isn\'t available right now. You can still edit the steps by hand.'); return; }
+  const pre = d.ai ? d.ai.pre : clone(d.plan);
+  d.ai = {kind, pre, why:{}, msgs:[], busy:true, error:'', input:'', ctl:new AbortController()};
+  S.view = 'aiReview'; S.openTask = null; render(); window.scrollTo(0,0);
+  const A = d.ai;
+  try{
+    const j = await sample.json(proposePrompt(d, kind), {signal: A.ctl.signal, modelTier:'default'});
+    if(S.draft !== d || d.ai !== A) return;
+    const ops = j && Array.isArray(j.changes) ? j.changes : [];
+    const lines = ops.length ? applyOps(d.plan, ops, A.why) : [];
+    A.msgs.push({role:'ai', text: str(j && j.summary) || (lines.length ? 'Here\'s what I changed.' : 'Nothing in the plan needed to change.'), changes: []});
+  }catch(e){
+    if(S.draft !== d || d.ai !== A) return;
+    if(e && e.code === 'cancelled'){ d.plan = A.pre; d.ai = null; S.view = 'editRecipe'; }
+    else A.error = aiErrText(e);
+  }finally{ if(d.ai === A) A.busy = false; if(S.draft === d) render(); }
+}
+async function reviewSend(textArg){
+  const d = S.draft, A = d && d.ai; if(!A || A.busy) return;
+  const el = document.getElementById('rv-input');
+  const text = str(textArg != null ? textArg : (el ? el.value : A.input));
+  if(!text) return;
+  const sample = await getSample();
+  if(!sample){ toast('The AI isn\'t available right now.'); return; }
+  A.msgs.push({role:'user', text}); A.input = ''; A.busy = true; A.ctl = new AbortController(); render(); scrollReview();
+  try{
+    const j = await sample.json(reviewChatPrompt(d, A.msgs), {signal: A.ctl.signal, modelTier:'default'});
+    const ops = j && Array.isArray(j.changes) ? j.changes : [];
+    const lines = ops.length ? applyOps(d.plan, ops, A.why) : [];
+    A.msgs.push({role:'ai', text: str(j && j.reply) || (lines.length ? 'Done.' : 'Nothing needed to change.'), changes: lines});
+  }catch(e){ if(!(e && e.code === 'cancelled')) A.msgs.push({role:'ai', text: aiErrText(e), changes: []}); }
+  finally{ A.busy = false; render(); scrollReview(); const i = document.getElementById('rv-input'); if(i) i.focus(); }
+}
+function scrollReview(){ const el = document.getElementById('rv-log'); if(el) el.scrollIntoView({block:'end', behavior:'smooth'}); }
+function syncInputs(){ /* commit any half-typed field before leaving the editor */ const a = document.activeElement; if(a && a.dataset && a.dataset.b) applyBind(a); }
+
+/* What changed, step by step: base = saved plan, plan = proposal */
+function stepDiff(base, plan, k){
+  const toolName = id => (plan.kitchen.tools.find(x => x.id === id) || {}).name || id;
+  const usesTxt = u => Object.entries(u||{}).filter(([,q]) => q > 0).map(([id,q]) => (q > 1 ? q + '× ' : '') + toolName(id).toLowerCase()).join(', ') || 'nothing';
+  const lenTxt = (p, t) => t.who === 'h' ? dur(t.dur||5) : dur(len(t));
+  const whenTxt = (p, t) => t.who === 'h' ? 'Needed by ' + fmtDT(dueOf(p, t)) : fmtDT(sched(p, t));
+  const ovenTxt = o => o ? `${o.temp}°F, ${o.min === o.max ? o.min : o.min + '–' + o.max} min${(o.slots||1) > 1 ? ', ' + o.slots + ' spots' : ''}` : 'no oven';
+  const out = {mine:[], other:[]};
+  const push = (t, x) => (t.r === k ? out.mine : out.other).push(x);
+  for(const t of plan.tasks){
+    if(t.final) continue;
+    const b = findTask(base, t.id);
+    if(!b){ push(t, {type:'add', id:t.id, title:t.title, lines:[`${whenTxt(plan,t)} · ${lenTxt(plan,t)}${t.oven ? ' · oven ' + ovenTxt(t.oven) : ''}${t.who === 'h' ? ' · helper job' : ''}`], steps:t.steps}); continue; }
+    const L = [];
+    if(b.title !== t.title) L.push(`Renamed from "${b.title}"`);
+    if(b.who !== t.who) L.push(t.who === 'h' ? 'Now a helper job' : 'Now a cook step');
+    const w0 = whenTxt(base,b), w1 = whenTxt(plan,t); if(w0 !== w1) L.push(`${w0} → ${w1}`);
+    const l0 = lenTxt(base,b), l1 = lenTxt(plan,t); if(l0 !== l1 && !(t.oven && b.oven)) L.push(`${l0} → ${l1}`);
+    if(JSON.stringify(b.oven ? [b.oven.temp,b.oven.min,b.oven.max,b.oven.slots||1] : null) !== JSON.stringify(t.oven ? [t.oven.temp,t.oven.min,t.oven.max,t.oven.slots||1] : null)) L.push(`Oven: ${ovenTxt(b.oven)} → ${ovenTxt(t.oven)}`);
+    if(usesTxt(b.uses) !== usesTxt(t.uses) && t.who === 'mm') L.push(`Equipment: ${usesTxt(b.uses)} → ${usesTxt(t.uses)}`);
+    const stepsChanged = JSON.stringify(b.steps||[]) !== JSON.stringify(t.steps||[]);
+    if(stepsChanged) L.push('Instructions rewritten');
+    if(L.length) push(t, {type:'chg', id:t.id, title:t.title, lines:L, steps: stepsChanged ? t.steps : null, old: stepsChanged ? b.steps : null});
+  }
+  for(const b of base.tasks) if(!b.final && !findTask(plan, b.id)) push(b, {type:'del', id:b.id, title:b.title, lines:[whenTxt(base,b)]});
+  const ord = {del:0, chg:1, add:2};
+  for(const key of ['mine','other']) out[key].sort((a,b) => ord[a.type] - ord[b.type]);
+  return out;
+}
+function changeItem(x, why){
+  const badge = {add:'<span class="cbadge add">Added</span>', chg:'<span class="cbadge chg">Changed</span>', del:'<span class="cbadge del">Removed</span>'}[x.type];
+  return `<li class="citem ${x.type}"><div class="citem-h">${badge}<b>${esc(x.title)}</b></div>
+    <ul class="clines">${x.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+    ${why ? `<p class="cwhy">${esc(why)}</p>` : ''}
+    ${x.steps && x.steps.length ? `<details class="csteps"><summary>${x.type === 'add' ? 'See the instructions' : 'See the new instructions'}</summary><ol>${x.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>${x.old && x.old.length ? `<p class="sub">Before:</p><ol class="old">${x.old.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}</details>` : ''}
+  </li>`;
+}
+/* Before/after bars for one dish, per day */
+function dishCompare(base, plan, k){
+  const M = 60000, H = 3600000;
+  const span = (p, t) => { const s = t.who === 'h' ? displayTime(p, t) : sched(p, t); return [s, s + Math.max(1, t.who === 'h' ? (t.dur||5) : len(t)) * M]; };
+  const blocksOf = (p, day) => {
+    const bl = [];
+    for(const t of p.tasks.filter(t => t.r === k && !t.final && dayOf(span(p,t)[0]) === day).sort((a,b) => span(p,a)[0] - span(p,b)[0])){
+      const [s, e] = span(p, t), kk = kindOf(t);
+      const b = bl.find(x => x.k === kk && s <= x.e + 15*M && (kk !== 'oven' || x.temp === t.oven.temp));
+      if(b) b.e = Math.max(b.e, e); else bl.push({k:kk, s, e, temp: t.oven && t.oven.temp});
+    }
+    return bl.sort((a,b) => a.s - b.s);
+  };
+  const days = ['wed','thu'].map(day => ({day, a: blocksOf(base, day), b: blocksOf(plan, day)})).filter(x => x.a.length || x.b.length);
+  if(!days.length) return '<p class="empty">This dish has no steps.</p>';
+  return days.map(({day, a, b}) => {
+    const same = JSON.stringify(a.map(x => [x.k,x.s,x.e])) === JSON.stringify(b.map(x => [x.k,x.s,x.e]));
+    let a0 = Math.min(...a.concat(b).map(x => x.s)), a1 = Math.max(...a.concat(b).map(x => x.e));
+    a0 = Math.floor(a0 / H) * H; a1 = Math.max(a0 + H, Math.ceil(a1 / H) * H);
+    const pct = ms => (ms - a0) / (a1 - a0) * 100, step = a1 - a0 > 6*H ? 2*H : H;
+    const ticks = []; for(let x = a0; x <= a1; x += step) ticks.push(`<span class="t2-tick" style="left:${pct(x)}%">${esc(fmtShort(x))}</span>`);
+    const track = bl => { const ends = []; const bars = bl.map(x => { let row = ends.findIndex(e => e <= x.s); if(row < 0){ row = ends.length; ends.push(x.e); } else ends[row] = x.e; const w = pct(x.e) - pct(x.s); return `<span class="t2-bar todo" style="--kc:${KINDS[x.k].color};--p:0%;left:${pct(x.s)}%;width:max(8px, ${w}%);top:${row*22}px">${x.k === 'oven' && w > 8 ? x.temp + '°' : ''}</span>`; }).join(''); return `<div class="t2-track" style="height:${Math.max(1,ends.length)*22-4}px">${bars || '<span class="sub cmp-none">Nothing this day</span>'}</div>`; };
+    if(same) return `<div class="cmp-day"><div class="cmp-dh"><b>${day === 'wed' ? 'Wednesday' : 'Thursday'}</b><span class="sub">No timing changes</span></div></div>`;
+    return `<div class="cmp-day"><div class="cmp-dh"><b>${day === 'wed' ? 'Wednesday' : 'Thursday'}</b></div>
+      <div class="cmp"><div class="t2-axis"><div class="t2-plot">${ticks.join('')}</div></div>
+      <div class="cmp-row"><span class="cmp-l">Before</span>${track(a)}</div>
+      <div class="cmp-row"><span class="cmp-l">After</span>${track(b)}</div></div></div>`;
+  }).join('');
+}
+function renderAIReview(){
+  const d = S.draft, A = d.ai, plan = d.plan, base = d.base, k = d.recipeId, r = plan.recipes[k];
+  const editMode = (d.mode || 'edit') === 'edit';
+  const head = `<section class="card"><div class="card-h"><h1 class="ed-h">Review the changes</h1><button class="btn link" data-act="aiBack">Back to editor</button></div>
+    <p class="sub" style="margin:0">${A.kind === 'fix' ? 'The AI rescheduled ' : 'The AI updated the plan for '}<b>${esc(r.name)}</b>. Nothing is saved until you approve it. Not quite right? Tell the AI below, or go back to the editor and change steps yourself.</p></section>`;
+  if(A.busy && !A.msgs.length) return `<div class="wrap review">${head}<section class="card"><div class="thinking-row"><span class="spinner" aria-hidden="true"></span><div><b>${A.kind === 'fix' ? 'Working out new times…' : 'Reading your changes and updating the steps…'}</b><p class="sub" style="margin:0">This usually takes 10 to 30 seconds.</p></div></div><div class="btns"><button class="btn" data-act="reviewStop">Stop</button></div></section></div>`;
+  if(A.error && !A.msgs.length) return `<div class="wrap review">${head}<section class="card"><div class="alert crit"><p>${esc(A.error)}</p></div><div class="btns"><button class="btn primary" data-act="aiRetry">Try again</button><button class="btn ghost" data-act="aiDiscard">Back to editor</button></div></section></div>`;
+  const df = stepDiff(base, plan, k), n = df.mine.length + df.other.length;
+  const iss = planIssues(plan), baseKeys = new Set(planIssues(base).map(i => i.text)), fresh = iss.filter(i => !baseKeys.has(i.text));
+  const pf = plannedFinish(plan), goal = dinnerAt(plan), pf0 = plannedFinish(base);
+  const fit = `<div class="fitrow">${pf > goal ? `<span class="pill crit">Food ready ${esc(fmtTime(pf))}, ${dur(mins(pf-goal))} after your ${esc(fmtTime(goal))} goal</span>` : `<span class="pill good">Everything ready by ${esc(fmtTime(goal))}</span>`}${pf !== pf0 ? ` <span class="sub">(was ${esc(fmtTime(pf0))})</span>` : ''}
+    ${fresh.length ? `<span class="pill crit">${fresh.length} new conflict${fresh.length>1?'s':''}</span>` : iss.length ? `<span class="pill neutral">No new conflicts</span>` : `<span class="pill good">No conflicts</span>`}</div>
+    ${fresh.length ? `<div class="alerts">${fresh.map(i => `<div class="alert ${i.lv}"><p>${esc(i.text)}</p></div>`).join('')}</div>` : ''}`;
+  const timing = `<section class="card"><div class="card-h"><h2>Timing, before and after</h2></div>${fit}${dishCompare(base, plan, k)}
+    <div class="legend t2-legend">${Object.values(KINDS).map(x => `<span class="lg"><i style="background:${x.color}"></i>${x.label}</span>`).join('')}</div></section>`;
+  const list = `<section class="card"><div class="card-h"><h2>Step changes</h2><span class="sub">${n || 'None'}</span></div>
+    ${df.mine.length ? `<ul class="clist">${df.mine.map(x => changeItem(x, A.why[x.id])).join('')}</ul>` : '<p class="empty">No steps for this dish changed.</p>'}
+    ${df.other.length ? `<h3 class="cother">Other dishes moved to make room <span class="sub">${df.other.length}</span></h3><ul class="clist">${df.other.map(x => { const rr = recipeOf(plan, (findTask(plan,x.id) || findTask(base,x.id) || {}).r); return changeItem(Object.assign({}, x, {title: rr.short + ': ' + x.title}), A.why[x.id]); }).join('')}</ul>` : ''}
+  </section>`;
+  const first = A.msgs[0];
+  const summary = first ? `<section class="card ai-sum"><div class="ai-sum-h">${IC.chat}<b>What the AI changed</b></div><p>${esc(first.text)}</p></section>` : '';
+  const msgs = A.msgs.slice(1).map((m, i) => m.role === 'user'
+    ? `<div class="bubble me">${esc(m.text)}</div>`
+    : `<div class="bubble ai">${esc(m.text)}${m.changes && m.changes.length ? `<ul class="chlist">${m.changes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  const examples = ['Keep the original start time', 'Use the small pot instead', 'Don\'t move the other dishes', 'Make this ahead on Wednesday'];
+  const chat = `<section class="card chat-card" aria-labelledby="rv-h"><div class="card-h"><h2 id="rv-h">Tell the AI what to change</h2></div>
+    <p class="sub" style="margin:0">Say what you'd like done differently. The AI updates the plan and the changes above refresh.</p>
+    <div class="chat-log rv-log" aria-live="polite">${msgs}${A.busy ? '<div class="bubble ai thinking"><span class="spinner" aria-hidden="true"></span>Updating the plan…</div>' : ''}</div>
+    ${A.msgs.length < 2 ? `<div class="chips">${examples.map(x => `<button class="pick" data-act="reviewExample" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}
+    <div class="composer" id="rv-log"><label class="sr" for="rv-input">Tell the AI what to change</label>
+      <textarea id="rv-input" rows="2" placeholder="e.g. Start the potatoes at 3:30 instead">${esc(A.input||'')}</textarea>
+      ${A.busy ? '<button class="btn" data-act="reviewStop">Stop</button>' : '<button class="btn primary" data-act="reviewSend">Send</button>'}</div>
+  </section>`;
+  const bar = `<div class="savebar rv-bar" role="region" aria-label="Approve changes"><div class="savebar-in"><span>${n ? `${n} change${n>1?'s':''} to review` : 'Nothing changed'}</span><div class="btns"><button class="btn ghost" data-act="aiDiscard">Undo AI changes</button><button class="btn primary" data-act="aiApprove" ${A.busy?'disabled':''}>${editMode ? 'Approve and save' : 'Keep these changes'}</button></div></div></div>`;
+  return `<div class="wrap review">${head}${summary}${timing}${list}${chat}</div>${bar}`;
+}
+function aiApprove(){
+  const d = S.draft; if(!d || !d.ai) return;
+  const k = d.recipeId;
+  d.ai = null;
+  if((d.mode || 'edit') !== 'edit'){ S.view = 'editRecipe'; toast(d.mode === 'review' ? 'Changes kept. Accept the dish when you\'re ready.' : 'Changes kept. Add the dish when you\'re ready.'); render(); window.scrollTo(0,0); return; }
+  commitDraft(); S.draft = null; S.recipeTab = k;
+  S.view = isHost() ? 'recipes' : homeView(); render(); window.scrollTo(0,0);
+}
+
 /* ============ ROOT RENDER ============ */
 function render(){
   if(drag){ return; }
@@ -2455,6 +2678,7 @@ function render(){
   else if(landing) body = renderLanding();
   else if(S.view === 'addDish') body = renderAddDish();
   else if(S.view === 'editRecipe' && S.draft) body = renderEditRecipe();
+  else if(S.view === 'aiReview' && S.draft && S.draft.ai) body = renderAIReview();
   else if(role === 'host') body = ({dashboard:renderDashboard, recipes:renderRecipes, helpers:renderHelpersAdmin, recipesAdmin:renderRecipesAdmin,
     kitchen:renderKitchen, dinner:renderDinner, schedule:renderSchedule, chat:renderChat}[S.view] || renderDashboard)();
   else if(role === 'owner') body = ({mine:renderOwner, recipes:renderRecipes, help:renderHelper}[S.view] || renderOwner)();
@@ -2560,7 +2784,8 @@ function toast(msg){ const el = document.getElementById('toast'); el.innerHTML =
 /* ============ NAVIGATION ============ */
 function go(v, force){
   closeModal();
-  const editorViews = ['editRecipe','kitchen','dinner','schedule','chat'];
+  const editorViews = ['editRecipe','aiReview','kitchen','dinner','schedule','chat'];
+  if(S.view === 'aiReview' && S.draft && S.draft.ai && S.draft.ai.ctl && S.draft.ai.busy) S.draft.ai.ctl.abort();
   if(!force && editorViews.includes(S.view) && S.draft && (dirty() || S.draft.mode === 'new') && S.draft.mode !== 'review' && v !== S.view){ openModal('leave', v); return; }
   if(v === 'kitchen'){ startDraft('kitchen'); }
   else if(v === 'dinner'){ startDraft('dinner', {shift:true}); }
@@ -2623,6 +2848,7 @@ document.addEventListener('input', e => {
   if(el.id === 'add-url' && S.add) S.add.url = el.value;
   if(el.id === 'import-code' && S.add) S.add.code = el.value;
   if(el.id === 'chat-input' && S.chat) S.chat.input = el.value;
+  if(el.id === 'rv-input' && S.draft && S.draft.ai) S.draft.ai.input = el.value;
   if(el.closest && el.closest('.tt') && S.ttId !== undefined){ const pv = document.getElementById('tt-preview'); if(pv) pv.innerHTML = ttPreview(S.ttId); }
   if(el.id === 'add-own' && S.add) S.add.own = el.checked;
 });
@@ -2716,7 +2942,15 @@ document.addEventListener('click', e => {
     case 'importDish': importDish(); break;
     case 'useImport': S.add = {code:'', own: !isHost(), error:'', showPrompt:false, forceImport:true}; render(); break;
     case 'useAuto': S.add = null; render(); break;
-    case 'regenSteps': regenSteps(); break;
+    case 'regenSteps': aiPropose('update'); break;
+    case 'aiUpdate': aiPropose('update'); break;
+    case 'aiRetry': aiPropose(S.draft && S.draft.ai ? S.draft.ai.kind : 'update'); break;
+    case 'aiApprove': aiApprove(); break;
+    case 'aiBack': if(S.draft){ if(S.draft.ai && S.draft.ai.busy && S.draft.ai.ctl) S.draft.ai.ctl.abort(); S.draft.ai = null; } S.view = 'editRecipe'; render(); window.scrollTo(0,0); break;
+    case 'aiDiscard': if(S.draft && S.draft.ai){ if(S.draft.ai.busy && S.draft.ai.ctl) S.draft.ai.ctl.abort(); S.draft.plan = S.draft.ai.pre; S.draft.ai = null; } S.view = 'editRecipe'; toast('AI changes undone. Your own edits are still here.'); render(); window.scrollTo(0,0); break;
+    case 'reviewSend': reviewSend(); break;
+    case 'reviewExample': reviewSend(v); break;
+    case 'reviewStop': if(S.draft && S.draft.ai && S.draft.ai.ctl) S.draft.ai.ctl.abort(); break;
     case 'showPrompt': if(S.add){ const c = document.getElementById('import-code'); if(c) S.add.code = c.value; S.add.showPrompt = !S.add.showPrompt; render(); } break;
     case 'copyPrompt': { const c = document.getElementById('import-code'); if(c && S.add) S.add.code = c.value;
       const txt = importPrompt();
@@ -2724,7 +2958,7 @@ document.addEventListener('click', e => {
       break; }
     case 'stopRead': if(S.add && S.add.ctl) S.add.ctl.abort(); break;
     case 'manualRecipe': manualRecipe(); break;
-    case 'fixAI': fixWithAI(); break;
+    case 'fixAI': aiPropose('fix'); break;
     case 'zoom': S.zoom = v; render(); break;
     case 'gsel': S.gSel = S.gSel === id ? null : id; render(); break;
     case 'addOvenStep': { const t = {id: rid('x-'), r: S.draft.recipeId, day:'thu', t:'15:00', dur:30, who:'mm', title:'Bake', steps:[], uses:{}, oven:{temp:350, slots:1, min:30, max:35, check:''}}; S.draft.plan.tasks.push(t); render(); break; }
@@ -2742,6 +2976,7 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Escape') closeModal();
   if(e.key === 'Enter' && e.target.id === 'land-name'){ e.preventDefault(); landContinue(); }
   if(e.key === 'Enter' && !e.shiftKey && e.target.id === 'chat-input'){ e.preventDefault(); chatSend(); }
+  if(e.key === 'Enter' && !e.shiftKey && e.target.id === 'rv-input'){ e.preventDefault(); reviewSend(); }
   const g = e.target.closest && e.target.closest('[data-grip]');
   if(g && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
     e.preventDefault();
