@@ -446,6 +446,8 @@ svg{flex:0 0 auto}
 .carry-h{color:var(--warn)}
 .g-carry-h{font-size:.82rem;font-weight:700;color:var(--warn);padding:6px 0 2px;border-bottom:1px solid var(--line)}
 .g-row.carry .g-bar{border-style:dashed}
+
+.add-card .seg button{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -793,7 +795,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v12 · Nov 24';
+const APP_VERSION = 'v13 · Nov 24';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1836,14 +1838,14 @@ async function getSample(){
   return sampleFn;
 }
 function renderAddDish(){
-  if(S.noAI || (S.add && S.add.forceImport)) return renderImportDish();
+  if(S.noAI) return renderImportDish();
   const A = S.add || (S.add = {mode: gemini ? 'link' : 'text', text:'', url:'', files:[], own: !isHost(), busy:false, status:'', error:''});
   const photo = A.mode === 'photo', link = A.mode === 'link', canLink = !!gemini;
   return `<div class="wrap"><section class="card add-card">
     <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
     <p class="sub" style="margin:0">${canLink ? 'Paste a link to the recipe, paste the recipe itself, or add a photo of it.' : 'Paste a recipe or add a photo of it.'} The planner reads it, writes the steps and fits it into the cooking schedule. You'll review everything before it's saved.</p>
-    <div class="seg" role="group" aria-label="How to add it">${canLink ? `<button data-act="addMode" data-v="link" aria-pressed="${link}">Link</button>` : ''}<button data-act="addMode" data-v="text" aria-pressed="${!photo && !link}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo or screenshot</button></div>
-    ${photo ? `<label class="field" for="add-files">Recipe photos (up to 4)<input id="add-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
+    <div class="seg" role="group" aria-label="How to add it">${canLink ? `<button data-act="addMode" data-v="link" aria-pressed="${link}">Link</button>` : ''}<button data-act="addMode" data-v="text" aria-pressed="${A.mode === 'text'}">Paste text</button><button data-act="addMode" data-v="photo" aria-pressed="${photo}">Photo</button><button data-act="addMode" data-v="claude" aria-pressed="${A.mode === 'claude'}">Claude</button></div>
+    ${A.mode === 'claude' ? claudeSteps(A) : photo ? `<label class="field" for="add-files">Recipe photos or screenshots (up to 4)<input id="add-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
       ${A.files.length ? `<p class="sub" style="margin:0">${A.files.length} photo${A.files.length>1?'s':''} ready: ${A.files.map(f=>esc(f.name)).join(', ')}</p>` : ''}`
       : link ? `<label class="field" for="add-url">Recipe link<input id="add-url" type="url" inputmode="url" placeholder="https://…" value="${esc(A.url||'')}"></label>
         <p class="sub" style="margin:0">Works with most public recipe pages. If a site blocks it, copy the recipe text into Paste text, or use a screenshot.</p>`
@@ -1851,30 +1853,31 @@ function renderAddDish(){
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     ${A.busy ? `<div class="thinking" role="status"><span class="spinner" aria-hidden="true"></span><span>${esc(A.status || 'Reading the recipe…')}</span></div>` : ''}
-    <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : `<button class="btn primary" data-act="readRecipe">Analyze with AI and add to the plan</button>`}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Manually add to the plan</button></div>
-    ${window.claude ? '' : `<button class="btn link" data-act="useImport">Or use Claude instead (copy and paste)</button>`}
+    <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : (A.mode === 'claude' ? `<button class="btn primary" data-act="importDish">Add Claude's answer to the plan</button>` : `<button class="btn primary" data-act="readRecipe">Analyze with AI and add to the plan</button>`)}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Manually add to the plan</button></div>
   </section></div>`;
 }
 function importPrompt(){
   return recipePrompt('', true).replace('in the attached photo(s)', 'I give you (pasted text, a photo, or a link you can open)').replace(/\n*$/, '') +
     `\n\nWhen you reply, give only the JSON so I can paste it into my planner. Here is the recipe:\n`;
 }
-function renderImportDish(){
-  const A = S.add || (S.add = {code:'', own: !isHost(), error:'', showPrompt:false});
-  return `<div class="wrap"><section class="card add-card">
-    <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
-    <p class="sub" style="margin:0">Let Claude do the work: it writes the steps and fits the dish into the cooking schedule. You'll review everything before it's saved.</p>
+function claudeSteps(A){
+  return `<p class="sub" style="margin:0">Needs a Claude account (free works). Claude writes the steps and fits the dish into the cooking schedule.</p>
     <ol class="steps import-steps">
       <li><b>Copy the planner prompt</b><div class="btns"><button class="btn primary small" data-act="copyPrompt">Copy prompt</button><button class="btn link" data-act="showPrompt">${A.showPrompt ? 'Hide it' : 'Show it instead'}</button></div>
         ${A.showPrompt ? `<label class="field" for="prompt-box">Select all and copy<textarea id="prompt-box" rows="6" readonly>${esc(importPrompt())}</textarea></label>` : ''}</li>
       <li><b>Paste it into Claude, then add your recipe</b><span>Paste the recipe text, attach a photo, or paste a link to the recipe page.</span></li>
       <li><b>Paste Claude's answer here</b>
         <label class="field" for="import-code">Claude's answer<textarea id="import-code" rows="8" placeholder='Starts with {"name": …'>${esc(A.code||'')}</textarea></label></li>
-    </ol>
+    </ol>`;
+}
+function renderImportDish(){
+  const A = S.add || (S.add = {code:'', own: !isHost(), error:'', showPrompt:false});
+  return `<div class="wrap"><section class="card add-card">
+    <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
+    ${claudeSteps(A)}
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
-    <div class="btns"><button class="btn primary" data-act="importDish">Import dish</button><button class="btn ghost" data-act="manualRecipe">Manually add to the plan</button></div>
-    ${S.noAI ? '' : `<button class="btn link" data-act="useAuto">Back to automatic reading</button>`}
+    <div class="btns"><button class="btn primary" data-act="importDish">Add Claude's answer to the plan</button><button class="btn ghost" data-act="manualRecipe">Manually add to the plan</button></div>
   </section></div>`;
 }
 function importDish(){
@@ -2587,7 +2590,7 @@ document.addEventListener('click', e => {
     case 'saveAndGo': if(S.draft && (dirty() || S.draft.mode === 'new')) commitDraft(); S.draft = null; afterLeave(v); break;
     case 'declineSub': if(S.draft && S.draft.subId){ removeSub(S.draft.subId); S.draft = null; toast('Declined. It won\'t be added.'); go('recipes', true); } break;
     case 'reviewSub': openReview(id); break;
-    case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; const u = document.getElementById('add-url'); if(u) S.add.url = u.value; S.add.mode = v; S.add.error = ''; render(); } break;
+    case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; const ic = document.getElementById('import-code'); if(ic) S.add.code = ic.value; const u = document.getElementById('add-url'); if(u) S.add.url = u.value; S.add.mode = v; S.add.error = ''; render(); } break;
     case 'readRecipe': readRecipe(); break;
     case 'importDish': importDish(); break;
     case 'useImport': S.add = {code:'', own: !isHost(), error:'', showPrompt:false, forceImport:true}; render(); break;
