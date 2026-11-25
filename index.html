@@ -448,6 +448,22 @@ svg{flex:0 0 auto}
 .g-row.carry .g-bar{border-style:dashed}
 
 .add-card .seg button{white-space:nowrap}
+
+/* ---- v14: primary actions pinned to the bottom of the screen ---- */
+body{--navh:0px}
+body.has-nav{--navh:86px}
+.actionbar{position:sticky;bottom:var(--navh);z-index:6;background:var(--white);margin:0 -18px -18px;padding:12px 18px calc(16px + env(safe-area-inset-bottom));border-radius:0 0 var(--r) var(--r);box-shadow:0 -10px 16px -14px rgba(57,23,19,.35);display:grid;gap:10px}
+.actionbar .formerr:empty{display:none}
+.land .submit-row{position:sticky;bottom:0;z-index:6;background:var(--bg);margin:0 -24px;padding:10px 24px calc(16px + env(safe-area-inset-bottom));display:grid;justify-items:center;gap:6px;box-shadow:0 -10px 16px -14px rgba(57,23,19,.35)}
+.land .submit-row .formerr{text-align:center}
+.land .submit-row .formerr:empty{display:none}
+.land .submit-row .btn.big{width:min(100%,360px)}
+.dialog{max-height:calc(100dvh - 32px);overflow-y:auto}
+.dialog > .btns:last-child{position:sticky;bottom:-22px;z-index:2;background:var(--white);margin:0 -22px -22px;padding:12px 22px 20px;box-shadow:0 -10px 16px -14px rgba(57,23,19,.35)}
+.chat-card .actionbar .pending{margin:0}
+/* v14b: let the pinned bar tuck under the nav's rounded top so nothing peeks through */
+body.has-nav{--navh:calc(80px + env(safe-area-inset-bottom))}
+body.has-nav .actionbar{bottom:calc(var(--navh) - 30px);padding-bottom:46px;border-radius:0}
 </style>
 </head>
 <body>
@@ -795,7 +811,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v13 · Nov 24';
+const APP_VERSION = 'v14 · Nov 24';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1248,8 +1264,7 @@ function renderLanding(){
         <label class="role${role==='h'?' on':''}"><input type="radio" name="role" value="h" ${role==='h'?'checked':''}><b>I'm helping</b><span>Pick up prep jobs like chopping and setting up.</span></label>
         <label class="role${role==='host'?' on':''}"><input type="radio" name="role" value="host" ${role==='host'?'checked':''}><b>I'm the host</b><span>Run the whole dinner: every dish, the oven and the schedule.</span></label>
       </fieldset>
-      <p class="formerr" id="land-err" role="alert"></p>
-      <div class="submit-row"><button class="btn primary big" type="button" data-act="landContinue">Continue</button></div>
+      <div class="submit-row"><p class="formerr" id="land-err" role="alert"></p><button class="btn primary big" type="button" data-act="landContinue">Continue</button></div>
     </form>
   </div></main>`;
 }
@@ -1851,9 +1866,11 @@ function renderAddDish(){
         <p class="sub" style="margin:0">Works with most public recipe pages. If a site blocks it, copy the recipe text into Paste text, or use a screenshot.</p>`
       : `<label class="field" for="add-text">Recipe text<textarea id="add-text" rows="12" placeholder="Paste the title, ingredients and instructions">${esc(A.text)}</textarea></label>`}
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
+    <div class="actionbar">
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     ${A.busy ? `<div class="thinking" role="status"><span class="spinner" aria-hidden="true"></span><span>${esc(A.status || 'Reading the recipe…')}</span></div>` : ''}
     <div class="btns">${A.busy ? `<button class="btn" data-act="stopRead">Stop</button>` : (A.mode === 'claude' ? `<button class="btn primary" data-act="importDish">Add Claude's answer to the plan</button>` : `<button class="btn primary" data-act="readRecipe">Analyze with AI and add to the plan</button>`)}<button class="btn ghost" data-act="manualRecipe" ${A.busy?'disabled':''}>Manually add to the plan</button></div>
+    </div>
   </section></div>`;
 }
 function importPrompt(){
@@ -1876,8 +1893,10 @@ function renderImportDish(){
     <div class="card-h"><h1 class="ed-h">Add a dish</h1><span class="pill neutral">Step 1 of 2</span></div>
     ${claudeSteps(A)}
     ${isHost() ? '' : `<label class="check-field"><input type="checkbox" id="add-own" ${A.own?'checked':''}> I'm making this dish</label>`}
+    <div class="actionbar">
     ${A.error ? `<p class="formerr" role="alert">${esc(A.error)}</p>` : ''}
     <div class="btns"><button class="btn primary" data-act="importDish">Add Claude's answer to the plan</button><button class="btn ghost" data-act="manualRecipe">Manually add to the plan</button></div>
+    </div>
   </section></div>`;
 }
 function importDish(){
@@ -2288,11 +2307,13 @@ function renderChat(){
     ${off}
     <div class="chat-log" id="chat-log" aria-live="polite">${msgs || `<div class="chips">${examples.map(x => `<button class="pick" data-act="chatExample" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
       ${C.busy ? '<div class="bubble ai thinking"><span class="spinner" aria-hidden="true"></span>Working through the plan…</div>' : ''}</div>
+    <div class="actionbar">
     ${pending ? `<div class="pending"><b>Changes ready to apply.</b> Nothing changes for anyone until you tap Apply. You can keep asking for tweaks first.
       <div class="btns"><button class="btn primary" data-act="chatApply">Apply changes</button><button class="btn ghost" data-act="chatUndo">Undo all</button></div></div>` : ''}
     <div class="composer"><label class="sr" for="chat-input">Message the plan assistant</label>
       <textarea id="chat-input" rows="2" placeholder="e.g. Do the green bean prep Thursday morning instead" ${S.noAI?'disabled':''}>${esc(C.input||'')}</textarea>
       ${C.busy ? '<button class="btn" data-act="chatStop">Stop</button>' : `<button class="btn primary" data-act="chatSend" ${S.noAI?'disabled':''}>Send</button>`}</div>
+    </div>
   </section>`;
   const rail = d ? `<section class="card" id="impact" aria-live="polite">${impactHtml()}</section>` : `<section class="card"><h2>How it works</h2><ol class="steps"><li>Describe the change, like "make the mash ahead and keep the cider in the big pot."</li><li>The assistant edits every affected step and lists what it changed.</li><li>Check the conflicts and moved steps here, ask for tweaks, then Apply.</li></ol></section>`;
   return `<div class="wrap split"><div class="col">${chat}</div><aside class="rail">${rail}</aside></div>`;
