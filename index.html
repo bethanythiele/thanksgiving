@@ -616,6 +616,33 @@ body.has-nav .review{padding-bottom:230px}
 .wrap > *, .col > *, .rail > *{min-width:0}
 .wrap,.col,.rail,.card{grid-template-columns:minmax(0,1fr)}
 @media (min-width:900px){ .wrap.split{grid-template-columns:minmax(0,1fr) 360px} }
+/* ---- v21: Helpers page, by person ---- */
+.pgrid{display:grid;gap:10px}
+@media (min-width:720px){ .pgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))} }
+.pcard{border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:8px;background:var(--white)}
+.pcard.busy{border-color:var(--yellow);box-shadow:inset 4px 0 0 var(--yellow)}
+.pc-h{display:flex;align-items:center;gap:10px}
+.pc-name{flex:1;min-width:0}
+.pc-name b{font-size:1.05rem}
+.pc-done{display:grid;justify-items:center;line-height:1.1;color:var(--muted);font-size:.8rem}
+.pc-done b{font-size:1.2rem;color:var(--ink)}
+.pc-l{margin:0;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--orange-ink)}
+.pc-idle{margin:0;color:var(--muted);font-size:.92rem}
+.pjobs{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pj{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:8px 10px}
+.pj-main{flex:1;min-width:0}
+.pj-main b{font-weight:600;display:block}
+.pj-meta{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:.86rem;color:var(--muted);margin-top:2px}
+.pj.late{background:var(--crit-soft)}
+.latetxt{color:var(--crit);font-weight:600}
+.pj.done b{color:var(--muted)}
+.fin summary{display:flex;align-items:baseline;justify-content:space-between;cursor:pointer;list-style:none}
+.fin summary::-webkit-details-marker{display:none}
+.fin summary h2{margin:0}
+.fin summary::after{content:"Show";color:var(--orange-ink);font-weight:600;font-size:.9rem;margin-left:10px}
+.fin[open] summary::after{content:"Hide"}
+.fin[open] summary{margin-bottom:10px}
+.fin summary .sub{margin-left:auto}
 </style>
 </head>
 <body>
@@ -967,7 +994,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v20 · Nov 25';
+const APP_VERSION = 'v21 · Nov 25';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1363,6 +1390,10 @@ function taskRow(t, opts={}){
     else if(s.assignee === S.key) actions += `<button class="btn small ghost" data-act="release" data-id="${t.id}">Give it back</button>`;
   }
   if(!done && !opts.readonly && canEditTask(t) && !t.final) actions += `<button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button>`;
+  if(!done && !opts.readonly && canEditTask(t) && !t.final){
+    if(t.who === 'mm' && !t.oven && !stt) actions += `<button class="btn small ghost" data-act="toHelper" data-id="${t.id}">Make helper job</button>`;
+    else if(t.who === 'h') actions += `<button class="btn small ghost" data-act="toMM" data-id="${t.id}">${isHost() ? 'Make host-only task' : 'Make it my task'}</button>`;
+  }
   let timer = '';
   if(io){
     const el = mins(now() - s.inOvenAt);
@@ -1463,44 +1494,82 @@ function renderRecipes(){
 }
 
 /* ============ MASTERMIND: HELPERS ============ */
+/* Switch a step between host-only and helper job. Each direction remembers what it replaced, so switching back restores it. */
+function makeHelperJob(p, t){
+  if(!t || t.who === 'h' || t.final) return;
+  if(t.wasHelper){
+    const w = t.wasHelper, moved = w.at && (w.at[0] !== t.day || w.at[1] !== t.t);
+    t.who = 'h'; delete t.oven; delete t.uses; delete t.for; delete t.due;
+    if(moved){ const e = sched(p, t) + Math.max(5, t.dur||5) * 60000; t.from = [t.day, t.t]; t.due = [dayOf(e), hm(e)]; }
+    else { if(w.from) t.from = w.from; else delete t.from; if(w.for) t.for = w.for; else if(w.due) t.due = w.due; else t.due = [t.day, t.t]; if(w.day){ t.day = w.day; t.t = w.t; } }
+    delete t.wasHelper; return;
+  }
+  const s = sched(p, t), e = s + Math.max(5, len(t)) * 60000, due = [dayOf(e), hm(e)];
+  t.wasCook = {day:t.day, t:t.t, dur:t.dur, uses:t.uses || {}, oven:t.oven || null, after:t.after || null, due};
+  t.who = 'h'; t.dur = Math.max(5, len(t)); t.from = [t.day, t.t]; t.due = due; delete t.for; t.uses = {}; delete t.oven; delete t.after;
+}
+function makeHostTask(p, t){
+  if(!t || t.who !== 'h') return;
+  if(t.wasCook){
+    const c = t.wasCook, moved = JSON.stringify(t.due || null) !== JSON.stringify(c.due);
+    const d0 = dueOf(p, t) - (t.dur||5)*60000;
+    t.who = 'mm'; t.uses = c.uses || {}; if(c.oven) t.oven = c.oven; if(c.dur != null && !moved) t.dur = c.dur;
+    if(moved){ t.day = dayOf(d0); t.t = hm(d0); } else { t.day = c.day; t.t = c.t; if(c.after) t.after = c.after; }
+    delete t.from; delete t.due; delete t.for; delete t.wasCook; return;
+  }
+  const d0 = dueOf(p, t) - (t.dur||5)*60000;
+  t.wasHelper = {from:t.from||null, for:t.for||null, due:t.due||null, day:t.day, t:t.t}; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); t.wasHelper.at = [t.day, t.t];
+}
 function renderHelpersAdmin(){
-  const plan = S.plan;
-  const helpers = Object.entries(S.people).filter(([,p]) => roleOf(p) !== 'host');
-  const hj = plan.tasks.filter(t => t.who==='h');
-  const converted = plan.tasks.filter(t => t.who==='mm' && t.wasHelper);
-  const f = S.hjFilter;
-  const filt = {open: t => !isDone(t) && !prog(t.id).assignee, claimed: t => !isDone(t) && prog(t.id).assignee, done: isDone, all: () => true}[f];
-  const list = hj.filter(filt).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
-  const counts = {open: hj.filter(t => !isDone(t) && !prog(t.id).assignee).length, claimed: hj.filter(t => !isDone(t) && prog(t.id).assignee).length, done: hj.filter(isDone).length, all: hj.length};
-  const people = `<section class="card"><div class="card-h"><h2>Helpers & dish owners</h2><span class="sub">${helpers.length} ${helpers.length===1?'person':'people'}</span></div>
-    ${helpers.length ? `<div class="hlist">${helpers.map(([k,p]) => {
-      const mine = hj.filter(t => prog(t.id).assignee === k), doing = mine.filter(t=>!isDone(t)), did = hj.filter(t => isDone(t) && (prog(t.id).doneBy===k || prog(t.id).assignee===k));
-      const pct = mine.length ? Math.round(mine.filter(isDone).length/mine.length*100) : 0;
-      return `<div class="hrow"><div class="avatar" style="background:${colorFor(k)}" aria-hidden="true">${esc((p.name||'?').slice(0,1).toUpperCase())}</div>
-        <div><b>${esc(p.name)}</b> <span class="sub">· ${did.length} done · ${doing.length} in progress</span>${dishesOf(k).filter(r=>S.plan.recipes[r]).length ? `<p>Owns: ${dishesOf(k).filter(r=>S.plan.recipes[r]).map(r=>esc(S.plan.recipes[r].short)).join(', ')}</p>` : ''}
-        <div class="prog thin"><i style="width:${pct}%"></i></div>
-        <p>${doing.length ? 'On: '+doing.map(t=>esc(t.title)).join('; ') : 'Not on a job right now'}</p></div></div>`;
-    }).join('')}</div>` : '<p class="empty">Nobody else has signed in yet. Share the page link; people enter their name and pick their dishes or "Helper".</p>'}
+  const plan = S.plan, nowMs = now();
+  const hj = plan.tasks.filter(t => t.who === 'h');
+  const people = Object.entries(S.people).filter(([k,p]) => roleOf(p) !== 'host' && k !== S.key);
+  const chipR = t => `<span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span>`;
+  const dueTxt = t => { const d = dueOf(plan,t); return d < nowMs ? `<span class="latetxt">${dur(mins(nowMs - d))} past its deadline</span>` : 'by ' + esc(fmtDT(d)); };
+  // What each person is doing right now: helper jobs they claimed, plus cook steps on their own dishes that are under way
+  const activeOf = k => plan.tasks.filter(t => !isDone(t) && !t.final && (t.who === 'h' ? prog(t.id).assignee === k : (dishesOf(k).includes(t.r) && (started(t) || inOven(t)))));
+  const doneOf = k => plan.tasks.filter(t => isDone(t) && !t.final && (prog(t.id).doneBy === k || (t.who === 'h' && prog(t.id).assignee === k))).length;
+  const roster = people.map(([k,p]) => ({k, p, act: activeOf(k), done: doneOf(k)}))
+    .sort((a,b) => (b.act.length > 0) - (a.act.length > 0) || (a.p.joinedAt||0) - (b.p.joinedAt||0));
+  const mine = activeOf(S.key).filter(t => t.who === 'h');
+  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee).sort((a,b) => dueOf(plan,a) - dueOf(plan,b));
+  const finished = hj.filter(isDone).sort((a,b) => (prog(b.id).doneAt||0) - (prog(a.id).doneAt||0));
+  const working = roster.filter(x => x.act.length).length;
+  const jobLi = t => `<li class="pj${dueOf(plan,t) < nowMs ? ' late' : ''}"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}${t.who === 'h' ? dueTxt(t) : inOven(t) ? 'In the oven' : 'Started ' + esc(fmtTime(prog(t.id).startedAt))}</div></div>${t.who === 'h' ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}</li>`;
+  const card = x => {
+    const owns = dishesOf(x.k).filter(r => plan.recipes[r]).map(r => esc(plan.recipes[r].short));
+    const role = owns.length ? 'Owns ' + owns.join(', ') : 'Helper';
+    return `<article class="pcard${x.act.length ? ' busy' : ''}">
+      <div class="pc-h"><div class="avatar" style="background:${colorFor(x.k)}" aria-hidden="true">${esc((x.p.name||'?').slice(0,1).toUpperCase())}</div>
+        <div class="pc-name"><b>${esc(x.p.name || 'Someone')}</b><div class="sub">${role}${x.p.joinedAt ? ' · joined ' + esc(fmtDT(x.p.joinedAt)) : ''}</div></div>
+        <div class="pc-done"><b class="tnum">${x.done}</b><span>done</span></div></div>
+      ${x.act.length ? `<p class="pc-l">Working on</p><ul class="pjobs">${x.act.map(jobLi).join('')}</ul>` : '<p class="pc-idle">Not on anything right now</p>'}
+    </article>`;
+  };
+  const team = `<section class="card" aria-labelledby="team-h"><div class="card-h"><h2 id="team-h">Who's helping</h2><span class="sub">${people.length} joined${people.length ? ' · ' + working + ' working' : ''}</span></div>
+    ${people.length ? `<div class="pgrid">${roster.map(card).join('')}</div>` : '<p class="empty">Nobody has joined yet. Share the page link; people enter their name and pick their dishes or "I\'m helping."</p>'}
+    ${mine.length ? `<p class="pc-l" style="margin-top:6px">You're doing</p><ul class="pjobs">${mine.map(jobLi).join('').replace(/>Unassign</g, '>Give it back<')}</ul>` : ''}
   </section>`;
-  const jobs = `<section class="card"><div class="card-h"><h2>Helper jobs</h2>
-      <div class="seg" role="group" aria-label="Filter">${[['open','Open'],['claimed','Claimed'],['done','Done'],['all','All']].map(([k,l])=>`<button data-act="hjFilter" data-v="${k}" aria-pressed="${f===k}">${l} <span class="tnum">${counts[k]}</span></button>`).join('')}</div></div>
-    <p class="sub" style="margin:0">Anything you'd rather have the cook do can come off the helper list. It moves to the host, or to the dish's owner if it has one.</p>
-    <div class="tasks">${list.length ? list.map(t => {
-      const a = prog(t.id).assignee;
-      const open = S.expanded.has(t.id);
-      return `<div class="task nocheck${isDone(t)?' done':''}"><div class="tmain">
-        <div class="trow"><div class="tmeta"><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span><span class="chip">about ${t.dur} min</span>${a?`<span class="chip helper">${esc(personName(a))}</span>`:''}${isDone(t)?'<span class="chip">Done</span>':''}</div></div>
+  const openCard = `<section class="card" aria-labelledby="open-h"><div class="card-h"><h2 id="open-h">Open helper jobs</h2><span class="sub">${open.length ? open.length + ' nobody has claimed' : 'All claimed'}</span></div>
+    <p class="sub" style="margin:0">Anything you'd rather do yourself can come off the helper list. It goes to you, or to the dish's owner if it has one.</p>
+    <div class="tasks">${open.length ? open.map(t => {
+      const o = S.expanded.has(t.id);
+      return `<div class="task nocheck"><div class="tmain">
+        <div class="trow"><div class="tmeta">${chipR(t)}<span class="chip">about ${t.dur} min</span></div></div>
         <div class="ttitle">${esc(t.title)}</div>
-        ${viLink(t.id, open)}
-        ${neededBy(dueOf(plan,t), isDone(t))}
-        ${open ? detail(t) : ''}
-        <div class="btns">${!isDone(t) ? `<button class="btn small" data-act="toMM" data-id="${t.id}">Make it a cook step</button>` : ''}${a && !isDone(t) ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}<button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button><button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
+        ${viLink(t.id, o)}
+        ${neededBy(dueOf(plan,t), false)}
+        ${o ? detail(t) : ''}
+        <div class="btns"><button class="btn small" data-act="claim" data-id="${t.id}">I'm doing this</button><button class="btn small ghost" data-act="toMM" data-id="${t.id}">Make host-only task</button><button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button><button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
       </div></div>`;
-    }).join('') : '<p class="empty">Nothing here.</p>'}</div>
+    }).join('') : '<p class="empty">Every helper job has someone on it.</p>'}</div>
   </section>`;
-  const conv = converted.length ? `<section class="card"><h2>Moved off the helper list</h2><p class="sub" style="margin:0">Former helper jobs the cook is doing.</p>
-    <div class="tasks">${converted.map(t => `<div class="task nocheck"><div class="tmain"><div class="tmeta"><span class="time">${fmtDT(sched(plan,t))}</span><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span></div><div class="ttitle">${esc(t.title)}</div><div class="btns"><button class="btn small" data-act="toHelper" data-id="${t.id}">Give back to helpers</button></div></div></div>`).join('')}</div></section>` : '';
-  return `<div class="wrap split"><div class="col">${jobs}${conv}</div><aside class="rail">${people}</aside></div>`;
+  const doneCard = finished.length ? `<section class="card"><details class="fin"><summary><h2>Finished jobs</h2><span class="sub">${finished.length} of ${hj.length}</span></summary>
+    <ul class="pjobs">${finished.map(t => { const by = prog(t.id).doneBy || prog(t.id).assignee; return `<li class="pj done"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}${by ? (by === S.key ? 'You' : esc(personName(by))) : ''}${prog(t.id).doneAt ? ' · ' + esc(fmtTime(prog(t.id).doneAt)) : ''}</div></div></li>`; }).join('')}</ul></details></section>` : '';
+  const converted = plan.tasks.filter(t => t.who === 'mm' && t.wasHelper);
+  const conv = converted.length ? `<section class="card"><h2>Moved off the helper list</h2><p class="sub" style="margin:0">Former helper jobs that are now host-only.</p>
+    <div class="tasks">${converted.map(t => `<div class="task nocheck"><div class="tmain"><div class="tmeta"><span class="time">${fmtDT(sched(plan,t))}</span>${chipR(t)}</div><div class="ttitle">${esc(t.title)}</div><div class="btns"><button class="btn small" data-act="toHelper" data-id="${t.id}">Make helper job</button></div></div></div>`).join('')}</div></section>` : '';
+  return `<div class="wrap split"><div class="col">${team}${openCard}</div><aside class="rail">${doneCard}${conv}</aside></div>`;
 }
 
 /* ============ EDITORS: shared ============ */
@@ -1515,7 +1584,7 @@ function impactHtml(){
   for(const t of plan.tasks){
     const b = findTask(base, t.id);
     if(!b){ moved.push(`Added: "${t.title}"`); continue; }
-    if(t.who !== b.who){ moved.push(`"${t.title}" is now ${t.who==='mm' ? 'a cook step' : 'a helper job'}`); continue; }
+    if(t.who !== b.who){ moved.push(`"${t.title}" is now ${t.who==='mm' ? 'a host-only task' : 'a helper job'}`); continue; }
     if(t.who === 'mm'){ const a = sched(base,b), z = sched(plan,t); if(a !== z || len(b) !== len(t)) moved.push(`"${t.title}": ${fmtDT(a)} → ${fmtDT(z)}${len(b)!==len(t) ? ` (${dur(len(b))} → ${dur(len(t))})` : ''}`); }
     else { const a = dueOf(base,b), z = dueOf(plan,t); if(a !== z) moved.push(`Helper deadline "${t.title}": by ${fmtDT(a)} → by ${fmtDT(z)}`); }
   }
@@ -1572,7 +1641,7 @@ function taskForm(plan, t){
     <div><b>${esc(t.title)}</b><div class="sub">${esc(summary)}</div><button class="vi" data-act="openTask" data-id="${t.id}" aria-expanded="${open}"><span class="vi-ic" aria-hidden="true">${open?I_MINUS:I_PLUS}</span>${open?'Close editor':'Edit this step'}</button></div>
     ${open ? `<div class="fgrid">
       <label class="field wide">Step name<input data-b="${P}title" value="${esc(t.title)}"></label>
-      <label class="field">Who does it<select data-b="${P}who" data-struct="1"><option value="mm" ${t.who==='mm'?'selected':''}>Cook (host or dish owner)</option><option value="h" ${t.who==='h'?'selected':''}>Helper job</option></select></label>
+      <label class="field">Who does it<select data-b="${P}who" data-struct="1"><option value="mm" ${t.who==='mm'?'selected':''}>Host-only (or the dish's owner)</option><option value="h" ${t.who==='h'?'selected':''}>Helper job</option></select></label>
       ${t.who==='mm' ? `
         <label class="field">Day<select data-b="${P}day"><option value="wed" ${t.day==='wed'?'selected':''}>Wednesday</option><option value="thu" ${t.day==='thu'?'selected':''}>Thursday</option></select></label>
         <label class="field">Start time<input type="time" data-b="${P}t" value="${esc(t.t)}" ${t.final?'disabled':''}></label>
@@ -2291,8 +2360,8 @@ function applyOps(plan, ops, why){
   const find = ref => { if(!ref) return null; const r = str(typeof ref === 'object' ? ref.id : ref); return plan.tasks.find(t => t.id === r) || plan.tasks.find(t => t.title.toLowerCase() === r.toLowerCase()) || null; };
   const setFields = (t, f) => {
     if(f.title != null && str(f.title)) t.title = str(f.title);
-    if(f.who === 'h' && t.who !== 'h'){ t.who = 'h'; delete t.oven; t.uses = {}; if(!t.from) t.from = [t.day, t.t]; if(!t.for && !t.due) t.due = [t.day, fromMin(toMin(t.t) + (t.dur||10))]; }
-    else if(f.who === 'mm' && t.who !== 'mm'){ const d0 = dueOf(plan, t) - (t.dur||5)*60000; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); }
+    if(f.who === 'h' && t.who !== 'h') makeHelperJob(plan, t);
+    else if(f.who === 'mm' && t.who !== 'mm') makeHostTask(plan, t);
     if(f.day === 'wed' || f.day === 'thu') t.day = f.day;
     if(f.t && validHM(f.t) && !t.final) t.t = validHM(f.t);
     if(f.dur != null) t.dur = clampInt(f.dur, 0, 720, t.dur || 0);
@@ -2645,7 +2714,7 @@ function stepDiff(base, plan, k){
     if(!b){ push(t, {type:'add', id:t.id, title:t.title, lines:[`${whenTxt(plan,t)} · ${lenTxt(plan,t)}${t.oven ? ' · oven ' + ovenTxt(t.oven) : ''}${t.who === 'h' ? ' · helper job' : ''}`], steps:t.steps}); continue; }
     const L = [];
     if(b.title !== t.title) L.push(`Renamed from "${b.title}"`);
-    if(b.who !== t.who) L.push(t.who === 'h' ? 'Now a helper job' : 'Now a cook step');
+    if(b.who !== t.who) L.push(t.who === 'h' ? 'Now a helper job' : 'Now a host-only task');
     const w0 = whenTxt(base,b), w1 = whenTxt(plan,t); if(w0 !== w1) L.push(`${w0} → ${w1}`);
     const l0 = lenTxt(base,b), l1 = lenTxt(plan,t); if(l0 !== l1 && !(t.oven && b.oven)) L.push(`${l0} → ${l1}`);
     if(JSON.stringify(b.oven ? [b.oven.temp,b.oven.min,b.oven.max,b.oven.slots||1] : null) !== JSON.stringify(t.oven ? [t.oven.temp,t.oven.min,t.oven.max,t.oven.slots||1] : null)) L.push(`Oven: ${ovenTxt(b.oven)} → ${ovenTxt(t.oven)}`);
@@ -2899,8 +2968,8 @@ function applyBind(el){
     const f = parts.slice(2);
     if(f[0] === 'ovenOn'){ if(val){ t.oven = {temp:350, slots:1, min: t.dur||30, max:(t.dur||30)+5, check:''}; } else { t.dur = t.oven ? t.oven.min : t.dur; delete t.oven; } }
     else if(f[0] === 'who'){
-      if(val === 'h' && t.who !== 'h'){ t.who = 'h'; delete t.oven; t.uses = {}; t.from = t.from || [t.day, '08:00']; if(!t.for && !t.due) t.due = [t.day, t.t]; }
-      else if(val === 'mm' && t.who !== 'mm'){ const d0 = dueOf(plan, t) - (t.dur||5)*60000; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); }
+      if(val === 'h') makeHelperJob(plan, t);
+      else if(val === 'mm') makeHostTask(plan, t);
     }
     else if(f[0] === 'for' && f[1] === 'id'){ if(val){ t.for = {id: val, before: (t.for && t.for.before) || 0}; delete t.due; } else { const due = dueOf(plan,t); t.due = [dayOf(due), hm(due)]; delete t.for; } }
     else if(f[0] === 'due'){ t.due = [t.due ? t.due[0] : t.day, val]; }
@@ -2988,8 +3057,8 @@ document.addEventListener('click', e => {
     case 'mid': saveTask(id, {midDone:true}); break;
     case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key}); toast(effRole() === 'h' ? 'It\'s yours. The steps are under "Your jobs".' : 'Marked as yours. Helpers can see you\'re doing it.'); break; }
     case 'release': saveTask(id, {assignee:null}); if(effRole() !== 'h') toast('Back on the open helper list.'); break;
-    case 'toMM': { const p = clone(plan), t = findTask(p, id); const d0 = dueOf(p, t) - (t.dur||5)*60000; t.wasHelper = {from:t.from||null, for:t.for||null, due:t.due||null}; t.who = 'mm'; t.day = dayOf(d0); t.t = hm(d0); savePlan(p); if(prog(id).assignee) saveTask(id, {assignee:null}); toast('Moved to your plan.'); break; }
-    case 'toHelper': { const p = clone(plan), t = findTask(p, id); const w = t.wasHelper || {}; t.who = 'h'; delete t.oven; t.uses = {}; t.from = w.from || [t.day, '08:00']; if(w.for) t.for = w.for; else t.due = w.due || [t.day, t.t]; delete t.wasHelper; savePlan(p); toast('Back on the helper list.'); break; }
+    case 'toMM': { const p = clone(plan), t = findTask(p, id); if(!t) break; makeHostTask(p, t); savePlan(p); if(prog(id).assignee) saveTask(id, {assignee:null}); toast(ownerOf(t.r) && ownerOf(t.r) !== S.key ? `Now ${personName(ownerOf(t.r))}'s task (it's their dish).` : 'Now a host-only task.'); break; }
+    case 'toHelper': { const p = clone(plan), t0 = findTask(plan, id), t = findTask(p, id); if(!t) break; const hadTools = !t.wasHelper && Object.values(t.uses||{}).some(q => q > 0); makeHelperJob(p, t); savePlan(p); if(prog(id).startedAt) saveTask(id, {startedAt:null}); toast(hadTools ? 'Now a helper job. Helpers can claim it. Pots and burners for helper jobs aren\'t tracked, so keep an eye on the stove.' : 'Now a helper job. Helpers can claim it.'); break; }
     case 'editTask': { const t = findTask(plan, id); if(t){ openRecipeEditor(plan.recipes[t.r] ? t.r : 'general'); if(S.view === 'editRecipe'){ S.openTask = id; render(); } } break; }
     case 'editRecipe': openRecipeEditor(id); break;
     case 'addRecipe': go('addDish'); break;
