@@ -578,6 +578,44 @@ body.has-nav .review{padding-bottom:230px}
 .taken li{display:flex;gap:10px;align-items:flex-start}
 .taken b{font-weight:600}
 .avatar.sm{width:28px;height:28px;font-size:.8rem;flex:0 0 28px}
+/* ---- v19: larger type on phones ----
+   Scale: body 18px, secondary ~16px, tags/labels 14px, nothing under 12px.
+   Taps: buttons and toggles at least 44px tall. Inputs stay >= 16px so iOS doesn't zoom. */
+@media (max-width:719px){
+  html{font-size:18px}
+  body{font-size:1rem;line-height:1.45}
+  .eta{font-size:2.4rem}
+  .ttitle{line-height:1.3}
+  .detail ol{gap:6px}
+  .btn{min-height:46px}
+  .btn.small{min-height:44px;padding:8px 16px}
+  .seg button{min-height:44px;padding:8px 14px}
+  .vi{padding:8px 0}
+  .t2-bar{height:20px;line-height:20px;font-size:12px}
+  .t2-tick{font-size:12px}
+  .t2-now b,.t2-dinner b{font-size:12px;padding:2px 7px}
+  .bnav button{font-size:.78rem}
+  .bnav button svg{width:24px;height:24px}
+}
+@media (max-width:719px){
+  .t2-sub,.t2-st{font-size:14px}
+  .t2-cap,.t2-hint{font-size:15px}
+}
+.composer textarea{min-width:0}
+@media (max-width:719px){
+  .seg{max-width:100%}
+  .seg button{padding:8px 11px;font-size:.85rem;min-width:0}
+}
+.composer textarea{width:100%;flex:1 1 0}
+@media (max-width:719px){
+  .seg{overflow-x:auto;scrollbar-width:none}
+  .seg::-webkit-scrollbar{display:none}
+  .seg button{white-space:nowrap;flex:0 0 auto}
+}
+@media (max-width:719px){ .card-h{flex-wrap:wrap} .card-h > .seg{min-width:0} }
+.wrap > *, .col > *, .rail > *{min-width:0}
+.wrap,.col,.rail,.card{grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){ .wrap.split{grid-template-columns:minmax(0,1fr) 360px} }
 </style>
 </head>
 <body>
@@ -593,6 +631,7 @@ const FOIL = [
 const S2 = (h,x) => ({h, x});
 const DEFAULT_PLAN = {
   v: 2,
+  stepsV: 2,
   dinner: '17:00',
   kitchen: {
     ovenSpots: 4,
@@ -731,188 +770,191 @@ const DEFAULT_PLAN = {
     // ---------- WEDNESDAY ----------
     {id:'w-rub', day:'wed', t:'09:30', dur:5, r:'brisket', who:'h', from:['wed','08:00'], for:{id:'w-season', before:0},
      title:'Mix the brisket dry rub',
-     steps:['In a small bowl, combine 2½ tsp kosher salt, 1½ tsp freshly ground black pepper, 2 tsp paprika, 1½ tsp garlic powder and 1 tsp onion powder.','Stir and set the bowl next to the stove.']},
+     steps:["In a small bowl, combine 2½ tsp kosher salt, 1½ tsp freshly ground black pepper, 2 tsp smoked or sweet paprika, 1½ tsp garlic powder and 1 tsp onion powder.", "Stir and set the bowl next to the stove."]},
     {id:'w-aromatics', day:'wed', t:'09:40', dur:10, r:'brisket', who:'h', from:['wed','08:00'], for:{id:'w-sear', before:0},
      title:'Slice onions and smash garlic for the brisket',
-     steps:['Peel 2 large yellow or sweet onions and slice them thinly into rings.','Smash 4 garlic cloves with the flat of a knife and peel off the skins.','Gather 6 thyme sprigs, 3 rosemary sprigs and 2 dried bay leaves.','Put everything in one bowl next to the stove.']},
+     steps:["Peel 2 large yellow or sweet onions and slice them thinly into rings.", "Smash 4 garlic cloves with the flat of a knife and peel off the skins.", "Gather 6 thyme sprigs, 3 rosemary sprigs and 2 dried bay leaves.", "Put everything in one bowl next to the stove."]},
     {id:'w-season', day:'wed', t:'10:00', dur:30, r:'brisket', who:'mm',
      title:'Season the brisket and whisk the sauce',
-     steps:['Preheat the oven to 275°F.','Pat the brisket dry and rub the spice mix all over it.','Let it sit on the counter 20–30 minutes.','Meanwhile, whisk all the maple-tomato sauce ingredients until smooth.']},
+     steps:["Preheat the oven to 275°F.", "Pat the 5-lb brisket dry with paper towels.", "Rub the dry rub all over it: 2½ tsp kosher salt, 1½ tsp black pepper, 2 tsp paprika, 1½ tsp garlic powder and 1 tsp onion powder (a helper may have mixed this already).", "Let it sit on the counter 20–30 minutes.", "Meanwhile, whisk the sauce in a bowl until smooth: 1 can (15 oz) tomato sauce, 1 can (6 oz) tomato paste, ⅓ cup pure maple syrup (or dark brown sugar), ⅓ cup apple cider vinegar, 2 tbsp Worcestershire sauce, 1 tbsp Dijon mustard, 1 tsp chili powder and ¼ tsp ground allspice (or nutmeg)."]},
     {id:'w-sear', day:'wed', t:'10:30', dur:15, r:'brisket', who:'mm', uses:{bigSkillet:1, burnerGood:1}, needs:['w-season'],
      title:'Sear the brisket and build the braise',
-     steps:['Heat 2 tbsp oil in the large skillet over medium-high until shimmering.','Sear fat side down 4–5 min, flip, sear 3–4 min, move to a platter. If it won\'t lie flat, cut it in half to sear.','Lower to medium: onions and garlic 3 min, then 1 cup wine (or cider), scraping up the browned bits.','Onions into the foil pan, brisket on top fat side up, sauce over, herbs tucked in.','Pour about 2 cups broth around the edges so liquid comes ⅓–½ of the way up. Don\'t submerge it.'],
+     steps:["Heat 2 tbsp neutral high-heat oil (avocado, canola or grapeseed) in the large skillet over medium-high until shimmering.", "Sear the brisket fat side down 4–5 min, flip and sear 3–4 min, then move it to a platter. If it won't lie flat, cut it in half to sear.", "Lower the heat to medium. Add the 2 sliced onions and 4 smashed garlic cloves and cook 3 min.", "Pour in 1 cup dry red wine (Cabernet or Merlot) or apple cider and scrape up the browned bits.", "Spread the onions and garlic in the foil pan. Lay the brisket on top, fat side up. Pour the maple-tomato sauce over it and tuck 6 thyme sprigs, 3 rosemary sprigs and 2 bay leaves into the sides.", "Pour about 2 cups low-sodium beef broth around the edges, not over the top, so the liquid comes ⅓–½ of the way up the brisket. Don't submerge it. Add up to 1 more cup if needed."],
      notes:FOIL},
     {id:'w-braise', day:'wed', t:'10:45', dur:270, r:'brisket', who:'mm', needs:['w-sear'],
      oven:{temp:275, slots:1, min:270, max:360, check:'Fork slides in with zero resistance, 195–200°F. If it feels tight, cover and give it 30–45 more minutes.'},
      title:'Braise the brisket',
-     steps:['Crimp foil over the pan, lid on, set it on a sheet pan and slide it into the 275°F oven.','Start checking at 4½ hours.'],
+     steps:["Crimp a layer of foil tightly over the pan, then put the lid on.", "Set the pan on a sheet pan and slide it into the 275°F oven.", "Braise 4½–6 hours. Start checking at 4½ hours: a fork should slide into the thickest part with zero resistance, and it should read 195–200°F.", "When it's done, take it out on its sheet pan, remove the lid and foil, and let it rest in its liquid for 1 hour so the steam escapes."],
      out:['Uncover so steam escapes and let it rest in the liquid for 1 hour.'], notes:FOIL},
     {id:'w-peelgarlic', day:'wed', t:'10:45', dur:15, r:'mash', who:'h', from:['wed','08:00'], for:{id:'w-confit', before:0},
      title:'Peel garlic for the confit',
-     steps:['Break about 3 heads of garlic into cloves and peel every clove.','Trim off any hard root ends.','Put them in a small bowl next to the stove.']},
+     steps:["Break about 3 heads of garlic into cloves and peel every clove.", "Trim off any hard root ends.", "Put them in a small bowl next to the stove."]},
     {id:'w-confit', day:'wed', t:'11:00', dur:45, r:'mash', who:'mm', uses:{smallPot:1, burnerTiny:1},
      title:'Make the garlic confit',
-     steps:['Put the peeled cloves in a small pot and cover them with olive oil.','Small burner, lowest heat, 30–45 min until soft and golden. It should barely bubble.','Cool, then refrigerate in its oil. It must stay in the fridge.']},
+     steps:["Put the peeled garlic cloves (about 3 heads) in a small pot and pour in enough olive oil to cover them completely.", "Set it on a small burner at the lowest heat for 30–45 min, until the cloves are soft and golden. The oil should barely bubble. Turn it down if it sizzles.", "Let it cool, then refrigerate the cloves in their oil in a covered jar. Garlic in oil must stay in the fridge."]},
     {id:'w-squash', day:'wed', t:'11:30', dur:20, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pan1toss', before:10},
      title:'Peel and cube the butternut squash',
-     steps:['Peel the squash with a vegetable peeler.','Cut off both ends, halve it lengthwise and scoop out the seeds.','Cut into cubes about 1 inch across.','Store in a covered container in the fridge labeled "squash".']},
+     steps:["Peel 1 large butternut squash with a vegetable peeler.", "Cut off both ends, halve it lengthwise and scoop out the seeds.", "Cut into cubes about 1 inch across.", "Store in a covered container in the fridge labeled \"squash\"."]},
     {id:'w-onionpancetta', day:'wed', t:'12:00', dur:10, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pan1toss', before:10},
      title:'Cut the red onion wedges and dice the pancetta',
-     steps:['Cut 1 large red onion into wedges, keeping a little root on each so they hold together.','Cut 4 oz pancetta into ¼–½ inch pieces.','Store each in its own covered container in the fridge.']},
+     steps:["Cut 1 large red onion into wedges, keeping a little root on each so they hold together.", "Cut 4 oz pancetta into ¼–½ inch pieces.", "Store each in its own covered container in the fridge."]},
     {id:'w-sprouts', day:'wed', t:'12:15', dur:20, r:'veg', who:'h', from:['wed','09:00'], for:{id:'t-pinslice', before:5},
      title:'Trim and halve the Brussels sprouts',
-     steps:['Trim the tough brown stem ends off 1 lb of sprouts.','Halve small and medium ones; quarter any jumbo ones.','Save the loose outer leaves. They get crispy.','Pat everything completely dry. Wet sprouts won\'t crisp.','Store in a container lined with paper towels in the fridge.']},
+     steps:["Trim the tough brown stem ends off 1 lb of sprouts.", "Halve small and medium ones; quarter any jumbo ones.", "Save the loose outer leaves. They get crispy.", "Pat everything completely dry. Wet sprouts won't crisp.", "Store in a container lined with paper towels in the fridge."]},
     {id:'w-beans', day:'wed', t:'13:00', dur:15, r:'beans', who:'h', from:['wed','09:00'], for:{id:'t-blanch', before:0},
      title:'Trim the green beans',
-     steps:['Snap or cut the stem ends off 2 lbs green beans.','Rinse, dry, and refrigerate in a bag.']},
+     steps:["Snap or cut the stem ends off 2 lbs green beans.", "Rinse, dry, and refrigerate in a bag."]},
     {id:'w-ciderkit', day:'wed', t:'13:15', dur:5, r:'cider', who:'h', from:['wed','09:00'], for:{id:'t-ciderbrew', before:0},
      title:'Cut orange peel and measure the cider spices',
-     steps:['Peel 2 strips of orange peel with a vegetable peeler and scrape off any white pith.','In a small bowl: 3 cinnamon sticks, 2 star anise pods and 4–5 whole cloves. Add the peel.','Cover and refrigerate.']},
+     steps:["Peel 2 strips of orange peel with a vegetable peeler and scrape off any white pith.", "In a small bowl: 3 cinnamon sticks, 2 star anise pods and 4–5 whole cloves. Add the peel.", "Cover and refrigerate."]},
     {id:'w-scrub', day:'wed', t:'13:20', dur:5, r:'mash', who:'h', from:['wed','09:00'], for:{id:'t-potatoes', before:30},
      title:'Scrub the potatoes',
-     steps:['Scrub 6 medium-large russet potatoes under running water.','Dry them and leave them on the counter.']},
+     steps:["Scrub 6 medium-large russet potatoes under running water.", "Dry them and leave them on the counter."]},
     {id:'w-wrap', day:'wed', t:'16:15', dur:15, r:'brisket', who:'mm', after:{id:'w-braise', offset:60}, needs:['w-braise'],
      title:'Wrap the brisket and strain the gravy',
-     steps:['Wrap the brisket tightly in foil (or a container) and refrigerate.','Strain the braising sauce into a separate container, discarding herb stems and bay leaves (keep the onions if you like). Refrigerate overnight.']},
+     steps:["Lift the rested brisket out of the liquid. Wrap it tightly in foil (or put it in a covered container) and refrigerate.", "Strain the braising liquid into a separate container. Throw away the herb stems and bay leaves; keep the onions if you like. Refrigerate overnight. This is Thursday's gravy."]},
     {id:'w-pastry', day:'wed', t:'21:00', dur:1, r:'pinwheels', who:'mm',
      title:'Move the puff pastry to the fridge',
-     steps:['Move the puff pastry box from the freezer to the fridge so it thaws overnight.']},
+     steps:["Move the box of Trader Joe's All-Butter Puff Pastry (18 oz, 2 sheets) from the freezer to the fridge so it thaws overnight."]},
 
     // ---------- THURSDAY MORNING ----------
     {id:'t-cbmix', day:'thu', t:'08:30', dur:15, r:'cornbread', who:'mm',
      title:'Preheat to 350°F and mix the cornbread',
-     steps:['Preheat the oven to 350°F.','Mix the Trader Joe\'s cornbread mix as the box says, plus ½ can pumpkin.','Pour into the pan.']},
+     steps:["Preheat the oven to 350°F and grease the baking pan the box calls for.", "Make the Trader Joe's cornbread batter following the directions on the box (it lists the eggs, milk and butter to add).", "Stir in ½ can of canned pumpkin purée (half a 15-oz can, a scant 1 cup).", "Pour the batter into the greased pan."]},
     {id:'t-soften', day:'thu', t:'08:30', dur:2, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:30},
      title:'Set out the Boursin and cream cheese to soften',
-     steps:['Take the Boursin (5.2 oz) and 4 oz cream cheese out of the fridge.','Leave them unwrapped on the counter. They need 20–30 minutes.']},
+     steps:["Take the Boursin (5.2 oz) and 4 oz cream cheese out of the fridge.", "Leave them unwrapped on the counter. They need 20–30 minutes."]},
     {id:'t-icebath', day:'thu', t:'08:40', dur:3, r:'beans', who:'h', from:['thu','07:30'], for:{id:'t-blanch', before:-10},
      title:'Set up the ice bath for the green beans',
-     steps:['Fill a large bowl with ice and cold water.','Set it right next to the stove.']},
+     steps:["Fill a large bowl with ice and cold water.", "Set it right next to the stove."]},
     {id:'t-cbbake', day:'thu', t:'08:45', dur:45, r:'cornbread', who:'mm', needs:['t-cbmix'],
      oven:{temp:350, slots:1, min:45, max:50, check:'45 minutes, longer than the box says.'},
      title:'Bake the cornbread',
-     steps:['Bake at 350°F for 45 minutes.'],
+     steps:["Bake on the middle rack at 350°F for 45 minutes, longer than the box says.", "It's done when a toothpick in the center comes out clean.", "Cool it on the counter, then wrap it once it's completely cool."],
      out:['Cool on the counter. Wrap once cool. Don\'t refrigerate.']},
     {id:'t-leekprep', day:'thu', t:'08:45', dur:10, r:'beans', who:'h', from:['thu','07:30'], for:{id:'t-leeks', before:5},
      title:'Slice and wash the leeks',
-     steps:['Use only the white and light green parts of 2 leeks.','Halve them lengthwise, then slice crosswise into thin half-moons (about ⅛ inch).','Swish them in a bowl of cold water to loosen the dirt.','Lift them out onto a clean towel and pat completely dry.']},
+     steps:["Use only the white and light green parts of 2 leeks.", "Halve them lengthwise, then slice crosswise into thin half-moons (about ⅛ inch).", "Swish them in a bowl of cold water to loosen the dirt.", "Lift them out onto a clean towel and pat completely dry."]},
     {id:'t-blanch', day:'thu', t:'08:45', dur:25, r:'beans', who:'mm', uses:{bigPot:1, burnerGood:1},
      title:'Blanch and chill the green beans',
-     steps:['Bring the large stock pot of generously salted water to a boil.','Cook the beans 3–4 min until bright green and crisp-tender.','Ice bath 2 minutes.','Drain, pat dry, refrigerate in a container lined with paper towel.']},
+     steps:["Fill the large stock pot with water, salt it generously (about 2 tbsp kosher salt) and bring to a boil.", "Add the 2 lbs trimmed green beans and cook 3–4 min until bright green and crisp-tender.", "Move them straight into the ice bath for 2 minutes.", "Drain, pat dry, and refrigerate in a container lined with paper towel."]},
     {id:'t-artichokes', day:'thu', t:'09:00', dur:10, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
      title:'Drain, squeeze and chop the artichokes',
-     steps:['Drain 2 cans (14 oz each) of artichoke hearts.','Squeeze them very dry in a clean towel. Really wring them out.','Chop finely and put them in a bowl.']},
+     steps:["Drain 2 cans (14 oz each) of artichoke hearts.", "Squeeze them very dry in a clean towel. Really wring them out.", "Chop finely and put them in a bowl."]},
     {id:'t-pinmise', day:'thu', t:'09:05', dur:10, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
      title:'Grate the cheeses, zest the lemon, make the egg wash',
-     steps:['Shred 1 cup (about 4 oz) Gruyère.','Grate ⅓ cup Parmesan.','Zest 1 tsp lemon (about ½ lemon) and pick 1 tsp fresh thyme leaves.','Beat 1 egg with 1 tbsp water in a small bowl.','Set it all next to the softened cheeses.']},
+     steps:["Shred 1 cup (about 4 oz) Gruyère (or Swiss or fontina).", "Grate ⅓ cup Parmesan.", "Zest ½ lemon to get 1 tsp zest, and pick 1 tsp fresh thyme leaves (or use ½ tsp dried).", "Beat 1 large egg with 1 tbsp water in a small bowl for the egg wash.", "Set it all next to the softened cheeses."]},
     {id:'t-parchment', day:'thu', t:'09:10', dur:3, r:'pinwheels', who:'h', from:['thu','07:30'], for:{id:'t-logs', before:0},
      title:'Line two baking sheets with parchment',
-     steps:['Line two rimmed baking sheets with parchment paper.','Set them aside for the pinwheels.']},
+     steps:["Line two rimmed baking sheets with parchment paper.", "Set them aside for the pinwheels."]},
     {id:'t-leeks', day:'thu', t:'09:15', dur:15, r:'beans', who:'mm', uses:{bigSkillet:1, burnerGood:1},
      title:'Fry the crispy leeks',
-     steps:['½ cup neutral oil and the dry leeks in the large skillet over medium heat.','Fry 5–7 min until pale golden and crisp. Pull them just before they look fully browned.','Paper-towel-lined plate, flaky salt right away.','Leave uncovered at room temperature.']},
+     steps:["Put ½ cup neutral oil and the sliced, dried leeks (2 medium) in the large skillet over medium heat.", "Fry 5–7 min, stirring now and then, until pale golden and crisp. Pull them just before they look fully browned, because they keep darkening.", "Lift onto a paper-towel-lined plate and sprinkle with flaky sea salt right away.", "Leave uncovered at room temperature until dinner."]},
     {id:'t-logs', day:'thu', t:'09:30', dur:30, r:'pinwheels', who:'mm',
      title:'Make the pinwheel logs',
-     steps:['Mash the Boursin and cream cheese until smooth.','Stir in the artichokes, Gruyère, Parmesan, zest, thyme and pepper. Taste; salt only if needed.','Spread half on one pastry sheet, leaving a ½-inch border on one long edge. Egg-wash the border and roll up from the other edge.','Repeat, wrap both logs and refrigerate seam side down.','Keep the leftover egg wash covered in the fridge.']},
+     steps:["In a bowl, mash the softened Boursin (5.2 oz, Garlic & Fine Herbs) and 4 oz cream cheese until smooth.", "Stir in the chopped artichokes (2 cans), 1 cup shredded Gruyère, ⅓ cup grated Parmesan, 1 tsp lemon zest, 1 tsp thyme leaves and ¼ tsp black pepper. Taste and add salt only if needed.", "Lightly flour the counter and unroll one puff pastry sheet. Spread half the filling over it, leaving a ½-inch bare border along one long edge.", "Brush that border with egg wash, then roll up snugly from the opposite long edge and press the seam closed.", "Repeat with the second sheet and the rest of the filling.", "Wrap both logs and refrigerate them seam side down, at least 30 minutes and up to 24 hours.", "Keep the leftover egg wash covered in the fridge for baking."]},
     {id:'t-amclean', day:'thu', t:'10:00', dur:15, r:'general', who:'h', from:['thu','09:30'], for:{id:'t-ciderbrew', before:60},
      title:'Wash the morning dishes',
-     steps:['Wash the large stock pot, ice bath bowl, cutting boards and knives.','Leave the leek skillet and its oil for Bethany.','Put the large stock pot back on the stove for the cider.']},
+     steps:["Wash the large stock pot, ice bath bowl, cutting boards and knives.", "Leave the leek skillet and its oil for Bethany.", "Put the large stock pot back on the stove for the cider."]},
 
     // ---------- THURSDAY AFTERNOON ----------
     {id:'t-quarter', day:'thu', t:'14:00', dur:10, r:'mash', who:'h', from:['thu','13:00'], for:{id:'t-potatoes', before:5},
      title:'Quarter the potatoes',
-     steps:['Cut the 6 scrubbed russets into quarters.','Leave the skins on unless Bethany says to peel.','Put them in a bowl next to the stove.']},
+     steps:["Cut the 6 scrubbed russet potatoes into quarters.", "Leave the skins on unless Bethany says to peel.", "Put them in a bowl next to the stove."]},
     {id:'t-thyme', day:'thu', t:'14:10', dur:5, r:'veg', who:'h', from:['thu','12:00'], for:{id:'t-mash', before:5},
      title:'Pick and chop the thyme',
-     steps:['Pick 1 tbsp thyme leaves into a small bowl labeled "mash".','Finely chop another 1 tbsp into a second bowl labeled "squash".']},
+     steps:["Pick 1 tbsp thyme leaves into a small bowl labeled \"mash\".", "Finely chop another 1 tbsp into a second bowl labeled \"squash\"."]},
     {id:'t-lemongarlic', day:'thu', t:'14:20', dur:8, r:'beans', who:'h', from:['thu','12:00'], for:{id:'t-beansfin', before:7},
      title:'Zest and juice the lemon, slice the garlic',
-     steps:['Zest half a large lemon, then juice it to get 1½–2 tbsp juice.','Thinly slice 4 garlic cloves.','Put them in small bowls next to the stove.']},
+     steps:["Zest half a large lemon, then juice it to get 1½–2 tbsp juice.", "Thinly slice 4 garlic cloves.", "Put them in small bowls next to the stove."]},
     {id:'t-maple', day:'thu', t:'14:30', dur:3, r:'veg', who:'h', from:['thu','12:00'], for:{id:'t-combine', before:8},
      title:'Whisk the maple-vinegar sauce',
-     steps:['Whisk 1 tbsp maple syrup, 1 tbsp apple cider vinegar and ½ tsp salt in a small bowl.','Set it next to the oven.']},
+     steps:["Whisk 1 tbsp maple syrup, 1 tbsp apple cider vinegar and ½ tsp salt in a small bowl.", "Set it next to the oven."]},
     {id:'t-ciderbrew', day:'thu', t:'14:30', dur:20, r:'cider', who:'mm', uses:{bigPot:1, burnerGood:1},
      title:'Start the cider',
-     steps:['Large stock pot, medium heat: melt 2 tsp butter with 1½ tbsp maple.','Sear the persimmon halves cut side down 4–5 min until deeply browned.','Pour in the cider; add the spice bowl, orange peel and vanilla.','Bring just to a bare simmer.']},
+     steps:["In the large stock pot over medium heat, melt 2 tsp unsalted butter (or coconut oil) with 1½ tbsp pure maple syrup.", "Add 3 halved Fuyu persimmons cut side down and sear 4–5 min until deeply browned.", "Pour in 12 cups (3 quarts) unfiltered apple cider.", "Add the spice bowl (3 cinnamon sticks, 2 star anise pods, 4–5 whole cloves and 2 strips orange peel) and ¾ tsp vanilla bean paste or pure vanilla extract.", "Bring it just to a bare simmer. Don't let it boil."]},
     {id:'t-chives', day:'thu', t:'14:40', dur:5, r:'mash', who:'h', from:['thu','14:00'], for:{id:'t-mashfin', before:5},
      title:'Chop the chives',
-     steps:['Finely chop about ¾ of the container of fresh chives.','Put them in a small bowl next to the Instant Pot.']},
+     steps:["Finely chop about ¾ of the container of fresh chives.", "Put them in a small bowl next to the Instant Pot."]},
     {id:'t-ciderstep', day:'thu', t:'14:50', dur:25, r:'cider', who:'mm', uses:{bigPot:1, burnerGood:1}, needs:['t-ciderbrew'],
      title:'Steep the cider',
-     steps:['Turn to Low, cover and steep 20–30 min.','Don\'t let it boil.']},
+     steps:["Turn the heat to Low, cover and steep 20–30 min.", "Don't let it boil, or the cloves and star anise turn bitter."]},
     {id:'t-slice', day:'thu', t:'15:00', dur:20, r:'brisket', who:'mm',
      title:'Preheat to 325°F, skim and slice the brisket',
-     steps:['Preheat the oven to 325°F.','Lift the solid white fat off the gravy.','Slice the cold brisket against the grain, ¼ inch thick.','Shingle the slices into the foil pan and pour the skimmed gravy over.','Crimp foil over the pan, then put the lid on.'],
+     steps:["Preheat the oven to 325°F.", "Lift the solid white fat off the top of the chilled gravy and throw it away.", "Slice the cold brisket against the grain, ¼ inch thick.", "Shingle the slices into the foil pan and pour the skimmed gravy over them.", "Crimp a layer of foil over the pan, then put the lid on."],
      notes:FOIL},
     {id:'t-reheat', day:'thu', t:'15:20', dur:35, r:'brisket', who:'mm', needs:['t-slice'],
      oven:{temp:325, slots:1, min:35, max:45, check:'Heated through and bubbling around the edges.'},
      title:'Reheat the brisket',
-     steps:['Set the foil pan on a sheet pan and slide it into the 325°F oven.'],
+     steps:["Set the covered foil pan on a sheet pan and slide it into the 325°F oven.", "Bake 35–45 minutes, until it's bubbling at the edges."],
      out:['Keep the foil and lid on while the oven heats to 425°F.'], notes:FOIL},
     {id:'t-ciderfin', day:'thu', t:'15:20', dur:10, r:'cider', who:'mm', uses:{smallPot:2, burnerTiny:2}, needs:['t-ciderstep'],
      title:'Finish the cider and move it to the small pots',
-     steps:['Stir in 1–1½ tbsp lemon juice; taste and adjust with maple.','Strain out the whole spices so the long hold doesn\'t turn bitter.','Split between the two small pots, covered, on the small burners at the lowest setting.']},
+     steps:["Stir in 1–1½ tbsp fresh lemon juice. Taste and add more maple syrup if it needs sweetness.", "Strain out the whole spices so the long hold doesn't turn bitter.", "Split the cider between the two small pots. Cover them and keep them on the small burners at the lowest setting."]},
     {id:'t-dairy', day:'thu', t:'15:20', dur:3, r:'mash', who:'h', from:['thu','15:00'], for:{id:'t-mash', before:35},
      title:'Set out the dairy and garlic confit',
-     steps:['Take out the buttermilk (1½ cups), crème fraîche (½ cup), Greek yogurt (½ cup), 6–7 tbsp butter and the garlic confit.','Leave them on the counter by the Instant Pot.']},
+     steps:["Take out the buttermilk (1½ cups), crème fraîche (½ cup), Greek yogurt (½ cup), 6–7 tbsp butter and the garlic confit.", "Leave them on the counter by the Instant Pot."]},
     {id:'t-rinse', day:'thu', t:'15:22', dur:3, r:'mash', who:'h', from:['thu','15:15'], for:{id:'t-potatoes', before:0},
      title:'Rinse the large stock pot',
-     steps:['Once Bethany has moved the cider out, rinse the large stock pot.','Put it back on the big burner for the potatoes.']},
+     steps:["Once Bethany has moved the cider out, rinse the large stock pot.", "Put it back on the big burner for the potatoes."]},
     {id:'t-potatoes', day:'thu', t:'15:25', dur:40, r:'mash', who:'mm', uses:{bigPot:1, burnerGood:1},
      title:'Boil the potatoes',
-     steps:['Potatoes into the large stock pot, covered by 1 inch of cold, generously salted water.','Boil on high, then gently boil 17–20 min until completely fork-tender.']},
+     steps:["Put the quartered potatoes in the large stock pot and cover them by 1 inch with cold water. Salt it generously (about 2 tbsp kosher salt).", "Bring to a boil on high, then lower to a gentle boil for 17–20 min, until a fork slides in with no resistance."]},
     {id:'t-station', day:'thu', t:'15:30', dur:10, r:'cider', who:'h', from:['thu','15:00'], due:['thu','15:55'],
      title:'Set up the cider station',
-     steps:['Set out mugs and a ladle by the cider pots.','Thinly slice 1 Fuyu persimmon for garnish and set out extra cinnamon sticks.','Set out the spiced pear liqueur, bourbon, dark rum and a jigger.']},
+     steps:["Set out mugs and a ladle by the cider pots.", "Thinly slice 1 Fuyu persimmon for garnish and set out extra cinnamon sticks.", "Set out the spiced pear liqueur, bourbon, dark rum and a jigger."]},
     {id:'t-pmclean', day:'thu', t:'15:45', dur:10, r:'general', who:'h', from:['thu','15:30'], for:{id:'t-pinslice', before:5},
      title:'Clear counters and set out serving dishes',
-     steps:['Wash prep bowls and cutting boards.','Set out a platter for the green beans, a large bowl for the squash and sprouts, a bowl for the mash and a basket for the cornbread.']},
+     steps:["Wash prep bowls and cutting boards.", "Set out a platter for the green beans, a large bowl for the squash and sprouts, a bowl for the mash and a basket for the cornbread."]},
     {id:'t-mash', day:'thu', t:'16:05', dur:15, r:'mash', who:'mm', uses:{ip:1}, needs:['t-potatoes'],
      title:'Drain and mash the potatoes',
-     steps:['Drain and let steam dry 1–2 minutes.','Instant Pot on Sauté: 2 tbsp butter, the garlic confit and thyme, about 1 minute.','Switch to Keep Warm, add the buttermilk, then the potatoes. Mash.','Fold in the remaining butter, crème fraîche, yogurt, salt and pepper.','Keep Warm, lid ajar. Hold back a splash of buttermilk.']},
+     steps:["Drain the potatoes and let them steam dry in the colander for 1–2 minutes.", "Set the Instant Pot to Sauté. Melt 2 tbsp butter, then add all the garlic confit cloves and 1 tbsp thyme leaves (the bowl labeled \"mash\"). Stir about 1 minute.", "Switch to Keep Warm (or off) so the buttermilk doesn't curdle. Pour in the room-temperature buttermilk (1½ cups), holding back a splash.", "Add the potatoes and mash until smooth. Don't over-mash.", "Fold in the rest of the butter (4–5 tbsp), ½ cup crème fraîche and ½ cup Greek yogurt, then salt and pepper to taste.", "Leave it on Keep Warm with the lid ajar."]},
     {id:'t-up425', day:'thu', t:'16:05', dur:2, r:'veg', who:'mm', needs:['t-reheat'],
      title:'Turn the oven up to 425°F',
-     steps:['Brisket should be out with its foil and lid on.','Set the oven to 425°F and slide in an empty rimmed sheet pan for the sprouts.']},
+     steps:["Take the brisket out on its sheet pan if it isn't out already. Leave the foil and lid on so it stays hot.", "Set the oven to 425°F and slide in an empty rimmed sheet pan to heat for the Brussels sprouts."]},
     {id:'t-pan1toss', day:'thu', t:'16:10', dur:5, r:'veg', who:'mm',
      title:'Toss Pan 1',
-     steps:['On an unheated sheet pan, toss the squash and onion with 1–1½ tbsp olive oil, salt and pepper.','Single layer, pancetta scattered over, thyme sprinkled on top.']},
+     steps:["On an unheated rimmed sheet pan, toss the cubed butternut squash and red onion wedges with 1–1½ tbsp olive oil, plus salt and pepper.", "Spread it in a single layer. Scatter the 4 oz diced pancetta over it and sprinkle on 1 tbsp chopped thyme (the bowl labeled \"squash\")."]},
     {id:'t-pan1', day:'thu', t:'16:15', dur:35, r:'veg', who:'mm', needs:['t-pan1toss','t-up425'],
      oven:{temp:425, slots:1, min:35, max:38, check:'Squash fork-tender, pancetta crisp.'},
      title:'Roast Pan 1: squash, onion and pancetta',
-     steps:['Into the 425°F oven.'], out:['Set aside for combining with the sprouts.']},
+     steps:["Slide Pan 1 into the 425°F oven and roast about 30–38 minutes."], out:['Set aside for combining with the sprouts.']},
     {id:'t-pinslice', day:'thu', t:'16:25', dur:8, r:'pinwheels', who:'mm', needs:['t-logs'],
      title:'Slice the pinwheels',
-     steps:['Slice the cold logs into ¾-inch rounds.','Arrange 1 inch apart on the parchment-lined pans.','Brush the edges with the leftover egg wash.','Toss the sprouts with 1½–2 tbsp oil, salt and pepper while you\'re at it.']},
+     steps:["Slice the cold pinwheel logs into ¾-inch rounds.", "Arrange them 1 inch apart on the two parchment-lined baking sheets.", "Brush the edges with the leftover egg wash.", "While you're at it, make sure the Brussels sprouts (1 lb, trimmed and halved) are completely dry, then toss them and their loose leaves in a bowl with 1½–2 tbsp olive oil, salt and pepper until every leaf is coated."]},
     {id:'t-sprouts', day:'thu', t:'16:30', dur:23, r:'veg', who:'mm', needs:['t-up425'],
      oven:{temp:425, slots:1, min:23, max:25, mid:{at:15, label:'Flip the Brussels sprouts'}, check:'Deeply browned outside, tender all the way through.'},
      title:'Roast Pan 2: Brussels sprouts',
-     steps:['Pull the hot empty pan, arrange the sprouts cut side down, loose leaves in the gaps.','Roast undisturbed 15–18 min, flip, then 5–7 min more.']},
+     steps:["Pull out the hot empty sheet pan. Arrange the oiled sprouts cut side down, with the loose leaves in the gaps.", "Roast at 425°F undisturbed for 15–18 min, then flip them and roast 5–7 min more."]},
     {id:'t-pinwheels', day:'thu', t:'16:33', dur:18, r:'pinwheels', who:'mm', needs:['t-pinslice'],
      oven:{temp:425, slots:2, min:18, max:22, mid:{at:9, label:'Rotate the pinwheel pans'}, check:'Puffed, crisp and deeply golden. Start checking at 16 minutes.'},
      title:'Bake the pinwheels',
-     steps:['Both pans on the upper-middle rack.','Rotate the pans halfway through.'],
+     steps:["Put both pans of pinwheels on the upper-middle rack of the 425°F oven.", "Bake 18–22 minutes, rotating the pans halfway through. Start checking at 16 minutes.", "Let them cool on the pan for 5 minutes, then sprinkle with flaky salt and drizzle with hot honey, if using."],
      out:['Cool on the pan 5 minutes.','Flaky salt and a drizzle of hot honey, if using.']},
     {id:'t-cbwarm', day:'thu', t:'16:35', dur:3, r:'cornbread', who:'mm', uses:{airfryer:1}, optional:true,
      title:'Warm the cornbread (optional)',
-     steps:['Air fryer at 325°F for 2–3 minutes.','Wrap in a towel.']},
+     steps:["Warm the cornbread in the air fryer at 325°F for 2–3 minutes.", "Wrap it in a towel to keep it warm."]},
     {id:'t-beansfin', day:'thu', t:'16:47', dur:8, r:'beans', who:'mm', uses:{bigSkillet:1, burnerGood:1}, needs:['t-blanch','t-leeks'],
      title:'Finish the green beans',
-     steps:['Large skillet, medium: 3 tbsp butter, 2–3 min until golden and nutty.','Medium-low: garlic 30–45 seconds.','Beans + ½ tsp kosher salt + ½ tsp pepper, toss 2–3 min.','Off heat: lemon juice and zest. Platter, brown butter over, crispy leeks on top.']},
+     steps:["Melt 3 tbsp unsalted butter in the large skillet over medium heat. Cook 2–3 min, swirling, until golden and nutty.", "Lower to medium-low. Add the 4 sliced garlic cloves and stir 30–45 seconds.", "Add the blanched green beans, ½ tsp kosher salt and ½ tsp black pepper. Toss 2–3 min until hot.", "Off the heat, toss in the lemon juice (1½–2 tbsp) and zest (from half a lemon).", "Pile onto the platter, spoon the brown butter over the top and finish with the crispy leeks."]},
     {id:'t-brfinal', day:'thu', t:'16:50', dur:10, r:'brisket', who:'mm', needs:['t-reheat'],
      oven:{temp:425, slots:1, min:8, max:12, check:'Hot through. It only needs to warm back up.'},
      title:'Brisket back in, covered',
-     steps:['Still covered and on its sheet pan, into the slot Pan 1 just left.'], notes:FOIL},
+     steps:["Slide the covered brisket, still on its sheet pan, into the 425°F oven where Pan 1 just came out.", "Heat 8–12 minutes, until hot through."], notes:FOIL},
     {id:'t-combine', day:'thu', t:'16:53', dur:3, r:'veg', who:'mm', needs:['t-pan1','t-sprouts'],
      title:'Combine the pans and sauce them',
-     steps:['Combine both pans in the large serving bowl.','Drizzle the maple-vinegar sauce over and toss gently.']},
+     steps:["Tip both pans (the squash, onion and pancetta, and the Brussels sprouts) into the large serving bowl.", "Drizzle the maple-vinegar sauce over (1 tbsp maple syrup, 1 tbsp apple cider vinegar and ½ tsp salt, whisked) and toss gently."]},
     {id:'t-mashfin', day:'thu', t:'16:55', dur:2, r:'mash', who:'mm', needs:['t-mash'],
      title:'Finish the mash',
-     steps:['Taste and adjust salt and pepper.','Fold in the chives. Loosen with buttermilk if it\'s stiff.']},
+     steps:["Taste and adjust the salt and pepper.", "Fold in the chopped chives right before serving. If it's stiff, loosen it with the splash of buttermilk you held back."]},
     {id:'t-serve', day:'thu', t:'17:00', dur:0, r:'general', who:'mm', final:true,
      title:'Everything to the table',
      steps:['Brisket out of the oven. Dinner is served.']}
   ]
 };
+
+/* Step text as first shipped. Live plans whose steps still match this get the rewritten, self-contained steps above (see upgradeSteps in app.js). */
+const LEGACY_STEPS_V1 = {"w-rub": ["In a small bowl, combine 2½ tsp kosher salt, 1½ tsp freshly ground black pepper, 2 tsp paprika, 1½ tsp garlic powder and 1 tsp onion powder.", "Stir and set the bowl next to the stove."], "w-aromatics": ["Peel 2 large yellow or sweet onions and slice them thinly into rings.", "Smash 4 garlic cloves with the flat of a knife and peel off the skins.", "Gather 6 thyme sprigs, 3 rosemary sprigs and 2 dried bay leaves.", "Put everything in one bowl next to the stove."], "w-season": ["Preheat the oven to 275°F.", "Pat the brisket dry and rub the spice mix all over it.", "Let it sit on the counter 20–30 minutes.", "Meanwhile, whisk all the maple-tomato sauce ingredients until smooth."], "w-sear": ["Heat 2 tbsp oil in the large skillet over medium-high until shimmering.", "Sear fat side down 4–5 min, flip, sear 3–4 min, move to a platter. If it won't lie flat, cut it in half to sear.", "Lower to medium: onions and garlic 3 min, then 1 cup wine (or cider), scraping up the browned bits.", "Onions into the foil pan, brisket on top fat side up, sauce over, herbs tucked in.", "Pour about 2 cups broth around the edges so liquid comes ⅓–½ of the way up. Don't submerge it."], "w-braise": ["Crimp foil over the pan, lid on, set it on a sheet pan and slide it into the 275°F oven.", "Start checking at 4½ hours."], "w-peelgarlic": ["Break about 3 heads of garlic into cloves and peel every clove.", "Trim off any hard root ends.", "Put them in a small bowl next to the stove."], "w-confit": ["Put the peeled cloves in a small pot and cover them with olive oil.", "Small burner, lowest heat, 30–45 min until soft and golden. It should barely bubble.", "Cool, then refrigerate in its oil. It must stay in the fridge."], "w-squash": ["Peel the squash with a vegetable peeler.", "Cut off both ends, halve it lengthwise and scoop out the seeds.", "Cut into cubes about 1 inch across.", "Store in a covered container in the fridge labeled \"squash\"."], "w-onionpancetta": ["Cut 1 large red onion into wedges, keeping a little root on each so they hold together.", "Cut 4 oz pancetta into ¼–½ inch pieces.", "Store each in its own covered container in the fridge."], "w-sprouts": ["Trim the tough brown stem ends off 1 lb of sprouts.", "Halve small and medium ones; quarter any jumbo ones.", "Save the loose outer leaves. They get crispy.", "Pat everything completely dry. Wet sprouts won't crisp.", "Store in a container lined with paper towels in the fridge."], "w-beans": ["Snap or cut the stem ends off 2 lbs green beans.", "Rinse, dry, and refrigerate in a bag."], "w-ciderkit": ["Peel 2 strips of orange peel with a vegetable peeler and scrape off any white pith.", "In a small bowl: 3 cinnamon sticks, 2 star anise pods and 4–5 whole cloves. Add the peel.", "Cover and refrigerate."], "w-scrub": ["Scrub 6 medium-large russet potatoes under running water.", "Dry them and leave them on the counter."], "w-wrap": ["Wrap the brisket tightly in foil (or a container) and refrigerate.", "Strain the braising sauce into a separate container, discarding herb stems and bay leaves (keep the onions if you like). Refrigerate overnight."], "w-pastry": ["Move the puff pastry box from the freezer to the fridge so it thaws overnight."], "t-cbmix": ["Preheat the oven to 350°F.", "Mix the Trader Joe's cornbread mix as the box says, plus ½ can pumpkin.", "Pour into the pan."], "t-soften": ["Take the Boursin (5.2 oz) and 4 oz cream cheese out of the fridge.", "Leave them unwrapped on the counter. They need 20–30 minutes."], "t-icebath": ["Fill a large bowl with ice and cold water.", "Set it right next to the stove."], "t-cbbake": ["Bake at 350°F for 45 minutes."], "t-leekprep": ["Use only the white and light green parts of 2 leeks.", "Halve them lengthwise, then slice crosswise into thin half-moons (about ⅛ inch).", "Swish them in a bowl of cold water to loosen the dirt.", "Lift them out onto a clean towel and pat completely dry."], "t-blanch": ["Bring the large stock pot of generously salted water to a boil.", "Cook the beans 3–4 min until bright green and crisp-tender.", "Ice bath 2 minutes.", "Drain, pat dry, refrigerate in a container lined with paper towel."], "t-artichokes": ["Drain 2 cans (14 oz each) of artichoke hearts.", "Squeeze them very dry in a clean towel. Really wring them out.", "Chop finely and put them in a bowl."], "t-pinmise": ["Shred 1 cup (about 4 oz) Gruyère.", "Grate ⅓ cup Parmesan.", "Zest 1 tsp lemon (about ½ lemon) and pick 1 tsp fresh thyme leaves.", "Beat 1 egg with 1 tbsp water in a small bowl.", "Set it all next to the softened cheeses."], "t-parchment": ["Line two rimmed baking sheets with parchment paper.", "Set them aside for the pinwheels."], "t-leeks": ["½ cup neutral oil and the dry leeks in the large skillet over medium heat.", "Fry 5–7 min until pale golden and crisp. Pull them just before they look fully browned.", "Paper-towel-lined plate, flaky salt right away.", "Leave uncovered at room temperature."], "t-logs": ["Mash the Boursin and cream cheese until smooth.", "Stir in the artichokes, Gruyère, Parmesan, zest, thyme and pepper. Taste; salt only if needed.", "Spread half on one pastry sheet, leaving a ½-inch border on one long edge. Egg-wash the border and roll up from the other edge.", "Repeat, wrap both logs and refrigerate seam side down.", "Keep the leftover egg wash covered in the fridge."], "t-amclean": ["Wash the large stock pot, ice bath bowl, cutting boards and knives.", "Leave the leek skillet and its oil for Bethany.", "Put the large stock pot back on the stove for the cider."], "t-quarter": ["Cut the 6 scrubbed russets into quarters.", "Leave the skins on unless Bethany says to peel.", "Put them in a bowl next to the stove."], "t-thyme": ["Pick 1 tbsp thyme leaves into a small bowl labeled \"mash\".", "Finely chop another 1 tbsp into a second bowl labeled \"squash\"."], "t-lemongarlic": ["Zest half a large lemon, then juice it to get 1½–2 tbsp juice.", "Thinly slice 4 garlic cloves.", "Put them in small bowls next to the stove."], "t-maple": ["Whisk 1 tbsp maple syrup, 1 tbsp apple cider vinegar and ½ tsp salt in a small bowl.", "Set it next to the oven."], "t-ciderbrew": ["Large stock pot, medium heat: melt 2 tsp butter with 1½ tbsp maple.", "Sear the persimmon halves cut side down 4–5 min until deeply browned.", "Pour in the cider; add the spice bowl, orange peel and vanilla.", "Bring just to a bare simmer."], "t-chives": ["Finely chop about ¾ of the container of fresh chives.", "Put them in a small bowl next to the Instant Pot."], "t-ciderstep": ["Turn to Low, cover and steep 20–30 min.", "Don't let it boil."], "t-slice": ["Preheat the oven to 325°F.", "Lift the solid white fat off the gravy.", "Slice the cold brisket against the grain, ¼ inch thick.", "Shingle the slices into the foil pan and pour the skimmed gravy over.", "Crimp foil over the pan, then put the lid on."], "t-reheat": ["Set the foil pan on a sheet pan and slide it into the 325°F oven."], "t-ciderfin": ["Stir in 1–1½ tbsp lemon juice; taste and adjust with maple.", "Strain out the whole spices so the long hold doesn't turn bitter.", "Split between the two small pots, covered, on the small burners at the lowest setting."], "t-dairy": ["Take out the buttermilk (1½ cups), crème fraîche (½ cup), Greek yogurt (½ cup), 6–7 tbsp butter and the garlic confit.", "Leave them on the counter by the Instant Pot."], "t-rinse": ["Once Bethany has moved the cider out, rinse the large stock pot.", "Put it back on the big burner for the potatoes."], "t-potatoes": ["Potatoes into the large stock pot, covered by 1 inch of cold, generously salted water.", "Boil on high, then gently boil 17–20 min until completely fork-tender."], "t-station": ["Set out mugs and a ladle by the cider pots.", "Thinly slice 1 Fuyu persimmon for garnish and set out extra cinnamon sticks.", "Set out the spiced pear liqueur, bourbon, dark rum and a jigger."], "t-pmclean": ["Wash prep bowls and cutting boards.", "Set out a platter for the green beans, a large bowl for the squash and sprouts, a bowl for the mash and a basket for the cornbread."], "t-mash": ["Drain and let steam dry 1–2 minutes.", "Instant Pot on Sauté: 2 tbsp butter, the garlic confit and thyme, about 1 minute.", "Switch to Keep Warm, add the buttermilk, then the potatoes. Mash.", "Fold in the remaining butter, crème fraîche, yogurt, salt and pepper.", "Keep Warm, lid ajar. Hold back a splash of buttermilk."], "t-up425": ["Brisket should be out with its foil and lid on.", "Set the oven to 425°F and slide in an empty rimmed sheet pan for the sprouts."], "t-pan1toss": ["On an unheated sheet pan, toss the squash and onion with 1–1½ tbsp olive oil, salt and pepper.", "Single layer, pancetta scattered over, thyme sprinkled on top."], "t-pan1": ["Into the 425°F oven."], "t-pinslice": ["Slice the cold logs into ¾-inch rounds.", "Arrange 1 inch apart on the parchment-lined pans.", "Brush the edges with the leftover egg wash.", "Toss the sprouts with 1½–2 tbsp oil, salt and pepper while you're at it."], "t-sprouts": ["Pull the hot empty pan, arrange the sprouts cut side down, loose leaves in the gaps.", "Roast undisturbed 15–18 min, flip, then 5–7 min more."], "t-pinwheels": ["Both pans on the upper-middle rack.", "Rotate the pans halfway through."], "t-cbwarm": ["Air fryer at 325°F for 2–3 minutes.", "Wrap in a towel."], "t-beansfin": ["Large skillet, medium: 3 tbsp butter, 2–3 min until golden and nutty.", "Medium-low: garlic 30–45 seconds.", "Beans + ½ tsp kosher salt + ½ tsp pepper, toss 2–3 min.", "Off heat: lemon juice and zest. Platter, brown butter over, crispy leeks on top."], "t-brfinal": ["Still covered and on its sheet pan, into the slot Pan 1 just left."], "t-combine": ["Combine both pans in the large serving bowl.", "Drizzle the maple-vinegar sauce over and toss gently."], "t-mashfin": ["Taste and adjust salt and pepper.", "Fold in the chives. Loosen with buttermilk if it's stiff."]};
 
 /* ============ FIREBASE (paste your config here) ============ */
 const FIREBASE_CONFIG = {
@@ -925,7 +967,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v18 · Nov 25';
+const APP_VERSION = 'v20 · Nov 25';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1349,17 +1391,16 @@ function banner(){
 function nowText(){ return S.pretend ? 'Pretend time ' + fmtDT(now()) : 'Now ' + fmtTime(now()); }
 function header(){
   return `<header class="top"><div class="bar">
-    ${S.me && effRole() === 'host' ? `<button class="iconbtn" data-act="go" data-v="chat" aria-label="Plan assistant" title="Plan assistant">${IC.chat}</button>` : ''}
     <button class="iconbtn" data-act="switch" aria-label="Switch user" title="Switch user">${IC.swap}</button>
     <button class="iconbtn" data-act="menu" aria-haspopup="dialog" aria-label="Open menu" title="Menu">${IC.menu}</button>
   </div></header>`;
 }
 function bottomNav(){
   const host = effRole() === 'host';
-  const items = host ? [['dashboard','Dashboard',IC.home],['recipes','Recipes',IC.book],['helpers','Helpers',IC.people]]
+  const items = host ? [['dashboard','Dashboard',IC.home],['recipes','Recipes',IC.book],['helpers','Helpers',IC.people],['chat','Assistant',IC.chat]]
                      : [['mine','My dishes',IC.home],['recipes','Recipes',IC.book],['help','Help out',IC.people]];
   const cur = items.some(([k]) => k === S.view) ? S.view : (['editRecipe','recipesAdmin','addDish'].includes(S.view) ? 'recipes' : null);
-  return `<nav class="bnav" aria-label="Sections"><div class="bnav-in">${items.map(([k,l,i])=>`<button data-act="go" data-v="${k}" ${cur===k?'aria-current="page"':''}>${i}<span>${l}</span></button>`).join('')}</div></nav>`;
+  return `<nav class="bnav" aria-label="Sections"><div class="bnav-in" style="grid-template-columns:repeat(${items.length},1fr)">${items.map(([k,l,i])=>`<button data-act="go" data-v="${k}" ${cur===k?'aria-current="page"':''}>${i}<span>${l}</span></button>`).join('')}</div></nav>`;
 }
 
 /* ============ LANDING ============ */
@@ -2095,6 +2136,7 @@ function scheduleSummary(plan, skipRecipe){
     return `- ${t.day} ${hm(s)}-${hm(e)}${t.oven ? ` OVEN ${t.oven.temp}F ${t.oven.slots||1} spot(s)` : ''}${u ? ' uses '+u : ''} | ${recipeOf(plan,t.r).short}: ${t.title}`;
   }).join('\n');
 }
+const STEP_RULE = `Every step must stand on its own, for someone who never opens the recipe. Name each ingredient it uses with its amount (write "1 can (15 oz) tomato sauce, ⅓ cup maple syrup, …", never "the sauce ingredients" or "the spice mix"), plus the heat or oven temperature, the pot, pan or tool, how long, and how to tell it's done. If a helper prepped something earlier, still name it with its amount. Keep the recipe's exact quantities. Short, imperative lines someone can follow at the counter.`;
 function kitchenSummary(plan){ return `Oven: ${plan.kitchen.ovenSpots} sheet-pan spots, one temperature at a time.\nTools (id: name, count): ` + plan.kitchen.tools.map(x => `${x.id}: ${x.name}, ${x.count}`).join('; '); }
 function recipePrompt(text, hasImages){
   const plan = S.plan;
@@ -2112,7 +2154,7 @@ RULES
 - Every oven step needs temp (F), min and max minutes, sheet-pan spots (a casserole dish or pie counts as 1) and how to tell it's done. Do not overlap existing oven steps that use a different temperature, and never need more than ${plan.kitchen.ovenSpots} spots at once.
 - Do not book a tool beyond its count at the same time as existing steps. Use the tool ids given.
 - Helper jobs: "for" is the exact title of the cook step they prepare for, "before" is how many minutes before that step it must be done, "from" is the earliest day and time they can start.
-- Step instructions are short, imperative lines someone can follow at the counter. Keep the recipe's quantities.
+- ${STEP_RULE}
 - Times are 24h "HH:MM" in multiples of 5. Minutes are whole numbers.
 
 Reply with only JSON in this shape:
@@ -2430,7 +2472,7 @@ function renderChat(){
     : `<div class="bubble ai">${esc(m.text)}${m.changes && m.changes.length ? `<ul class="chlist">${m.changes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('');
   const off = S.noAI ? '<div class="note">The assistant needs Firebase AI Logic switched on. Once it is, refresh this page.</div>' : '';
   const chat = `<section class="card chat-card" aria-labelledby="chat-h">
-    <div class="card-h"><h1 class="ed-h" id="chat-h">Plan assistant</h1><button class="btn link" data-act="go" data-v="dashboard">Back</button></div>
+    <div class="card-h"><h1 class="ed-h" id="chat-h">Plan assistant</h1></div>
     <p class="sub" style="margin:0">Tell it what you want in plain words. It adjusts every step that's affected (equipment, oven, timing, helper prep) and shows you the result before anything changes.</p>
     ${off}
     <div class="chat-log" id="chat-log" aria-live="polite">${msgs || `<div class="chips">${examples.map(x => `<button class="pick" data-act="chatExample" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
@@ -2478,7 +2520,8 @@ function planRules(plan){
 - Order: a step can't start before the steps it "needs" are done. Helper jobs ("who":"h") are prep for the cook step they are "for" and must be done "before" minutes ahead of it. When you move a cook step earlier, move its helper jobs' "from" earlier too, and delete helper jobs that no longer make sense.
 - Food: if something is made ahead, add the steps it now needs (cool, cover and refrigerate; reheat, with the tool or oven it uses, before serving) and remove steps that no longer make sense.
 - Everything must be ready by dinner (${plan.dinner} Thursday). Don't change steps marked done unless asked.
-- Helpers never do oven work, stovetop cooking, tasting or seasoning.`;
+- Helpers never do oven work, stovetop cooking, tasting or seasoning.
+- Step text: ${STEP_RULE} Any step you add or rewrite must follow this.`;
 }
 const OPS_SCHEMA = `{"op":"update","id":"step id","why":"short reason","set":{"day":"thu","t":"12:30","dur":40,"title":"...","steps":["..."],"uses":{"toolId":1},"oven":{"temp":350,"min":30,"max":35,"slots":1,"check":"..."},"from":["thu","09:00"],"for":{"id":"cook step id","before":10},"needs":["step id"]}},
   {"op":"add","why":"short reason","task":{"r":"recipe id","who":"mm","day":"thu","t":"13:00","dur":20,"title":"...","steps":["..."],"uses":{},"oven":null,"needs":["step id"]}},
@@ -2494,7 +2537,7 @@ function proposePrompt(d, kind){
   const task = kind === 'fix'
     ? `The steps for "${r.name}" (recipe id "${k}") clash with the rest of the plan. Reschedule so there are no conflicts: prefer moving this dish's steps, keep its own order, keep make-ahead steps on Wednesday where possible. Move other dishes' steps only if there's no other way.`
     : same
-    ? `The host asked you to check the plan steps for "${r.name}" (recipe id "${k}") against its recipe and fix anything that doesn't match it or doesn't fit the day.\n\nRECIPE:\n"""\n${now}\n"""`
+    ? `The host asked you to check the plan steps for "${r.name}" (recipe id "${k}") against its recipe and fix anything that doesn't match it or doesn't fit the day. Rewrite any step that makes the cook look at the recipe (for example "whisk the sauce ingredients" without listing them) so it names every ingredient with its amount.\n\nRECIPE:\n"""\n${now}\n"""`
     : `The host edited the recipe for "${r.name}" (recipe id "${k}"). Update that dish's plan steps so they match the new version, and fix any knock-on effects on the rest of the plan.\n\nRECIPE BEFORE THE EDIT:\n"""\n${before}\n"""\n\nRECIPE NOW:\n"""\n${now}\n"""\n\nCompare the two versions and change only what the edit affects: step instructions and quantities, durations, oven temperature and times, equipment, helper prep jobs. Add steps the new recipe needs and delete ones it no longer has.`;
   return `You are the planning assistant inside a home Thanksgiving cooking planner. ${task}
 
@@ -3054,6 +3097,25 @@ async function resetAll(){
 
 /* ============ BOOT ============ */
 function localKey(){ let k = lsGet('tg-helper-key'); if(!k){ k = 'local-' + Math.random().toString(36).slice(2,10); lsSet('tg-helper-key', k); } return k; }
+/* One-time upgrade: plans saved before the steps were rewritten get the new, self-contained step text.
+   Only steps whose text is still exactly the original are replaced, so anything edited by hand or by the AI stays as it is. */
+function upgradeSteps(plan){
+  if(!plan || plan.stepsV >= 2 || typeof LEGACY_STEPS_V1 === 'undefined') return null;
+  const p = clone(plan); let n = 0;
+  for(const t of p.tasks){
+    const old = LEGACY_STEPS_V1[t.id], def = DEFAULT_PLAN.tasks.find(x => x.id === t.id);
+    if(!old || !def) continue;
+    const cur = JSON.stringify(t.steps || []);
+    if(cur === JSON.stringify(old) && cur !== JSON.stringify(def.steps)){ t.steps = clone(def.steps); n++; }
+  }
+  p.stepsV = 2;
+  return {plan: p, n};
+}
+function applyUpgrade(){
+  const u = upgradeSteps(S.plan); if(!u) return;
+  S.plan = u.plan;
+  if(S.conn !== 'readonly') persist('plan/current', {plan: u.plan, at: Date.now(), by: S.key || 'upgrade'});
+}
 function validPlan(p){ return p && p.v === 2 && Array.isArray(p.tasks) && p.recipes && p.kitchen && Array.isArray(p.recipeOrder); }
 async function boot(){
   render();
@@ -3061,7 +3123,7 @@ async function boot(){
   const C = window.claude;
   const finishLocal = () => {
     S.conn = 'local'; if(!S.key) S.key = localKey();
-    const l = lsGet('tg-local2'); if(l){ S.tasks = l.tasks || {}; S.people = l.people || {}; if(validPlan(l.plan)) S.plan = l.plan; }
+    const l = lsGet('tg-local2'); if(l){ S.tasks = l.tasks || {}; S.people = l.people || {}; if(validPlan(l.plan)){ S.plan = l.plan; applyUpgrade(); } }
     S.subs = lsGet('tg-subs') || {};
     afterIdentity(); S.ready = true; render();
   };
@@ -3087,7 +3149,7 @@ async function boot(){
   const loaded = () => { if(gotTasks && gotPlan && !S.ready){ S.ready = true; afterIdentity(); } };
   const loadTimer = setTimeout(() => { if(!S.ready){ S.ready = true; afterIdentity(); } if(S.conn === 'loading'){ S.conn = 'stale'; } render(); }, 10000);
   db.doc('plan/current').onSnapshot(snap => {
-    if(snap.exists && validPlan((snap.data()||{}).plan)) S.plan = snap.data().plan;
+    if(snap.exists && validPlan((snap.data()||{}).plan)){ S.plan = snap.data().plan; if(!snap.metadata.fromCache) applyUpgrade(); }
     if(!snap.metadata.fromCache) gotPlan = true;
     loaded(); render();
   }, () => { gotPlan = true; loaded(); render(); });
