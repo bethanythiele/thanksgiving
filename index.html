@@ -674,6 +674,23 @@ body.has-nav .review{padding-bottom:230px}
   .claimbar.taken .avatar,.claimbar.mine .avatar{grid-row:1 / span 2;align-self:center}
   .claimbar .cb-when{grid-column:2;line-height:1.2}
 }
+/* ---- v27: Assistant conversation ---- */
+.chat-solo{max-width:760px;margin:0 auto}
+.chat-when{align-self:center;font-size:.78rem;color:var(--muted);margin:6px 0 -2px}
+.ctag{display:inline-block;margin-top:8px;font-size:.78rem;font-weight:600;padding:2px 9px;border-radius:999px;background:rgba(57,23,19,.08);color:var(--muted);white-space:normal}
+.ctag.ok{background:var(--good-soft);color:var(--good)}
+.ctag.wait{background:var(--orange2);color:var(--orange-ink)}
+.bubble .ctag{display:table}
+.chat-card .chat-log{max-height:none;overflow:visible}
+.pend-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 14px}
+.pend-row .btns{flex-wrap:nowrap;margin:0}
+.pending{padding:8px 8px 8px 14px;gap:4px}
+.pend-row{padding:0}
+.pend-impact{display:none}
+.pend-impact summary{cursor:pointer;color:var(--orange-ink);font-weight:600;font-size:.9rem;padding:4px 0}
+.pend-body{max-height:40vh;overflow-y:auto;padding:8px 6px 4px 0;display:grid;gap:10px}
+.pend-body h2,.pend-body h3{font-size:1rem;margin:0}
+@media (max-width:899px){ .chat-rail{display:none} .pend-impact{display:block} }
 </style>
 </head>
 <body>
@@ -1025,7 +1042,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v26 · Nov 26';
+const APP_VERSION = 'v27 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -2568,7 +2585,7 @@ function planForAI(plan){
   });
 }
 function chatPrompt(plan, msgs){
-  const hist = msgs.slice(0, -1).slice(-8).map(m => (m.role === 'user' ? 'HOST: ' : 'ASSISTANT: ') + m.text + (m.changes && m.changes.length ? ' [changes: ' + m.changes.join('; ') + ']' : '')).join('\n');
+  const hist = msgs.slice(0, -1).slice(-12).map(m => (m.role === 'user' ? 'HOST: ' : 'ASSISTANT: ') + m.text + (m.changes && m.changes.length ? ' [changes ' + (m.status === 'applied' ? 'the host applied' : m.status === 'pending' ? 'waiting to be applied, already in the PLAN below' : 'the host did NOT apply') + ': ' + m.changes.join('; ') + ']' : '')).join('\n');
   const issues = planIssues(plan).map(i => '- ' + i.text).join('\n') || '(none)';
   return `You are the planning assistant inside a home Thanksgiving cooking planner. The host tells you in plain language how they want the plan to change, or asks a question about it. You change the plan by returning operations on its steps.
 
@@ -2592,40 +2609,66 @@ Reply with only JSON:
 ]}
 In "set", include only the fields you change. Use "oven": null to stop a step using the oven. Times are "HH:MM" in multiples of 5. Use existing step ids and tool ids. If nothing should change, return "changes": [].`;
 }
+/* ============ ASSISTANT PAGE: the conversation is saved (chats/host), so it survives leaving, reloading and other devices ============ */
+const CHAT_MAX = 80;
+function chatState(){
+  if(!S.chat){ const l = !db ? (lsGet('tg-chat') || {}) : {}; S.chat = {msgs: l.msgs || [], at: l.at || 0, busy:false, input:''}; }
+  if(db && !LIVE.makers.chat) listen('chat', () => db.doc('chats/host').onSnapshot(snap => {
+    const C = S.chat, d = snap.exists ? (snap.data() || {}) : null;
+    if(d && Array.isArray(d.msgs) && !C.busy && (d.at || 0) > (C.at || 0)){ C.msgs = d.msgs; C.at = d.at; if(S.view === 'chat'){ S.chatScroll = true; render(); } }
+  }, e => listenFailed('chat', e)));
+  return S.chat;
+}
+function saveChat(){
+  const C = chatState(); C.msgs = C.msgs.slice(-CHAT_MAX); C.at = Date.now();
+  const data = {at: C.at, by: S.key || null, msgs: C.msgs.map(m => {
+    const x = {role: m.role, text: str(m.text).slice(0, 4000), at: m.at || C.at};
+    if(m.changes && m.changes.length) x.changes = m.changes.slice(0, 40).map(c => str(c).slice(0, 300));
+    if(m.status) x.status = m.status;
+    return x; })};
+  if(db) persist('chats/host', data); else lsSet('tg-chat', data);
+}
+function chatPush(m){ const C = chatState(); m.at = Date.now(); C.msgs.push(m); }
+/* Mark the proposals still waiting as applied or not, once the host decides (or leaves) */
+function chatSettle(status){ const C = chatState(); let n = 0; for(const m of C.msgs) if(m.status === 'pending'){ m.status = status; n++; } if(n) saveChat(); }
+function chatWhen(ms){ const d = new Date(ms); return d.toLocaleDateString([], {weekday:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
 function renderChat(){
-  const C = S.chat || (S.chat = {msgs:[], busy:false, input:''});
+  const C = chatState();
   const d = S.draft && S.draft.kind === 'chat' ? S.draft : null, pending = d && dirty();
-  const examples = ['Move the Wednesday prep jobs to Thursday morning', 'Keep the cider in the big pot. Make the mashed potatoes ahead and reheat them', 'What\'s my busiest hour on Thursday?', 'Push dinner to 5:30 and shift the afternoon'];
-  const msgs = C.msgs.map(m => m.role === 'user'
-    ? `<div class="bubble me">${esc(m.text)}</div>`
-    : `<div class="bubble ai">${esc(m.text)}${m.changes && m.changes.length ? `<ul class="chlist">${m.changes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  const TAG = {applied:'<span class="ctag ok">Applied</span>', undone:'<span class="ctag">Not applied</span>', pending: pending ? '<span class="ctag wait">Waiting for you to apply</span>' : '<span class="ctag">Not applied</span>'};
+  let last = 0;
+  const msgs = C.msgs.map(m => {
+    const gap = m.at && (!last || m.at - last > 30*60000) ? `<div class="chat-when">${esc(chatWhen(m.at))}</div>` : '';
+    if(m.at) last = m.at;
+    return gap + (m.role === 'user'
+      ? `<div class="bubble me">${esc(m.text)}</div>`
+      : `<div class="bubble ai">${esc(m.text)}${m.changes && m.changes.length ? `<ul class="chlist">${m.changes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${TAG[m.status] || ''}` : ''}</div>`);
+  }).join('');
   const off = S.noAI ? '<div class="note">The Assistant needs Firebase AI Logic switched on. Once it is, refresh this page.</div>' : '';
   const chat = `<section class="card chat-card" aria-labelledby="chat-h">
-    <div class="card-h"><h1 class="ed-h" id="chat-h">Assistant</h1></div>
-    <p class="sub" style="margin:0">Tell it what you want in plain words. It adjusts every step that's affected (equipment, oven, timing, helper prep) and shows you the result before anything changes.</p>
+    <div class="card-h"><h1 class="ed-h" id="chat-h">Assistant</h1>${C.msgs.length && !C.busy ? '<button class="btn link" data-act="chatNew">New chat</button>' : ''}</div>
+    <p class="sub" style="margin:0">Ask for changes in plain words. Nothing is saved until you tap Apply.</p>
     ${off}
-    <div class="chat-log" id="chat-log" aria-live="polite">${msgs || `<div class="chips">${examples.map(x => `<button class="pick" data-act="chatExample" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
-      ${C.busy ? '<div class="bubble ai thinking"><span class="spinner" aria-hidden="true"></span>Working through the plan…</div>' : ''}</div>
+    ${msgs || C.busy ? `<div class="chat-log" id="chat-log" aria-live="polite">${msgs}${C.busy ? '<div class="bubble ai thinking"><span class="spinner" aria-hidden="true"></span>Working on it…</div>' : ''}</div>` : ''}
     <div class="actionbar">
-    ${pending ? `<div class="pending"><b>Changes ready to apply.</b> Nothing changes for anyone until you tap Apply. You can keep asking for tweaks first.
-      <div class="btns"><button class="btn primary" data-act="chatApply">Apply changes</button><button class="btn ghost" data-act="chatUndo">Undo all</button></div></div>` : ''}
+    ${pending ? `<div class="pending"><div class="pend-row"><b>Ready to apply</b><div class="btns"><button class="btn ghost" data-act="chatUndo">Undo</button><button class="btn primary" data-act="chatApply">Apply</button></div></div>
+      <details class="pend-impact"${S.chatImpactOpen ? ' open' : ''}><summary data-act="chatImpact">What this changes</summary><div class="pend-body">${impactHtml()}</div></details></div>` : ''}
     <div class="composer"><label class="sr" for="chat-input">Message the Assistant</label>
-      <textarea id="chat-input" rows="2" placeholder="e.g. Do the green bean prep Thursday morning instead" ${S.noAI?'disabled':''}>${esc(C.input||'')}</textarea>
+      <textarea id="chat-input" rows="2" placeholder="Ask for a change…" ${S.noAI?'disabled':''}>${esc(C.input||'')}</textarea>
       ${C.busy ? '<button class="btn" data-act="chatStop">Stop</button>' : `<button class="btn primary" data-act="chatSend" ${S.noAI?'disabled':''}>Send</button>`}</div>
     </div>
   </section>`;
-  const rail = d ? `<section class="card" id="impact" aria-live="polite">${impactHtml()}</section>` : `<section class="card"><h2>How it works</h2><ol class="steps"><li>Describe the change, like "make the mash ahead and keep the cider in the big pot."</li><li>The Assistant edits every affected step and lists what it changed.</li><li>Check the conflicts and moved steps here, ask for tweaks, then Apply.</li></ol></section>`;
-  return `<div class="wrap split"><div class="col">${chat}</div><aside class="rail">${rail}</aside></div>`;
+  return d ? `<div class="wrap split"><div class="col">${chat}</div><aside class="rail chat-rail"><section class="card" id="impact" aria-live="polite">${impactHtml()}</section></aside></div>` : `<div class="wrap chat-solo">${chat}</div>`;
 }
-function scrollChat(){ const el = document.getElementById('chat-log'); if(el) el.scrollTop = el.scrollHeight; }
+function scrollChat(){ if(S.view === 'chat') window.scrollTo(0, document.documentElement.scrollHeight); }
 async function chatSend(textArg){
-  const C = S.chat || (S.chat = {msgs:[], busy:false, input:''});
+  const C = chatState();
   const el = document.getElementById('chat-input');
   const text = str(textArg != null ? textArg : (el ? el.value : C.input));
   if(!text || C.busy) return;
   const sample = await getSample();
-  if(!sample){ C.msgs.push({role:'user', text}, {role:'ai', text:'The Assistant isn\'t available right now. Make sure Firebase AI Logic is switched on, then refresh.'}); C.input = ''; render(); return; }
-  C.msgs.push({role:'user', text}); C.input = ''; C.busy = true; C.ctl = new AbortController(); render(); scrollChat();
+  if(!sample){ chatPush({role:'user', text}); chatPush({role:'ai', text:'The Assistant isn\'t available right now. Make sure Firebase AI Logic is switched on, then refresh.'}); C.input = ''; saveChat(); render(); return; }
+  chatPush({role:'user', text}); C.input = ''; C.busy = true; C.ctl = new AbortController(); saveChat(); render(); scrollChat();
   const base = S.draft && S.draft.kind === 'chat' ? S.draft.plan : S.plan;
   try{
     const j = await sample.json(chatPrompt(base, C.msgs), {signal: C.ctl.signal, modelTier:'default'});
@@ -2635,11 +2678,13 @@ async function chatSend(textArg){
       if(!S.draft || S.draft.kind !== 'chat') startDraft('chat');
       lines = applyOps(S.draft.plan, ops);
     }
-    C.msgs.push({role:'ai', text: str(j && j.reply) || (lines.length ? 'Here\'s what I changed.' : 'Nothing needed to change.'), changes: lines});
+    const m = {role:'ai', text: str(j && j.reply) || (lines.length ? 'Here\'s what I changed.' : 'Nothing needed to change.'), changes: lines};
+    if(lines.length) m.status = 'pending';
+    chatPush(m);
   }catch(e){
     const c = e && e.code;
-    if(c !== 'cancelled') C.msgs.push({role:'ai', text: (c === 'appcheck' ? 'Firebase App Check rejected the Assistant\'s request.' : c === 'ai_off' ? 'The Assistant isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The Assistant is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.') + (S.aiErr ? '\n\nDetails: ' + S.aiErr : '')});
-  }finally{ C.busy = false; render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
+    if(c !== 'cancelled') chatPush({role:'ai', text: (c === 'appcheck' ? 'Firebase App Check rejected the Assistant\'s request.' : c === 'ai_off' ? 'The Assistant isn\'t switched on in Firebase yet. Try again in a few minutes.' : c === 'rate_limited' ? 'The Assistant is busy or the free daily limit is used up. Try again in a little while.' : c === 'invalid_json' ? 'My answer came back garbled. Try asking again, maybe in a shorter way.' : 'Something went wrong. Try again.') + (S.aiErr ? '\n\nDetails: ' + S.aiErr : '')});
+  }finally{ C.busy = false; saveChat(); render(); scrollChat(); const i = document.getElementById('chat-input'); if(i) i.focus(); }
 }
 
 /* ============ AI REVIEW: propose recipe-driven plan changes, then approve ============ */
@@ -2875,6 +2920,7 @@ function render(){
   if(drag){ return; }
   const app = document.getElementById('app');
   const focus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#app') ? captureFocus() : null;
+  const logPos = S.view === 'chat' && document.getElementById('chat-log') ? {top: window.scrollY, end: window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8} : null;
   const landing = S.ready && (!S.me || S.view === 'landing');
   const role = S.ready && !landing ? effRole() : null;
   let body;
@@ -2893,6 +2939,8 @@ function render(){
   else if(landing) app.innerHTML = body;
   else app.innerHTML = header() + `<main class="sheet-main">${banner()}${body}</main>` + (nav ? bottomNav() : '');
   if(focus) restoreFocus(focus);
+  if(S.chatScroll && S.view === 'chat'){ S.chatScroll = false; scrollChat(); }
+  else if(logPos && S.view === 'chat') window.scrollTo(0, logPos.end ? document.documentElement.scrollHeight : logPos.top);
   const dlg = document.querySelector('.dialog[data-kind="task"]');
   if(dlg && S.modalTask) dlg.innerHTML = taskModalHtml(S.modalTask);
 }
@@ -2954,6 +3002,9 @@ function openModal(kind, id){
       <label class="field" for="pretend-time">Date and time<input id="pretend-time" type="datetime-local" value="${val}" min="2026-11-24T00:00" max="2026-11-27T00:00"></label>
       <div class="sub">The clock keeps running from there. Only this device sees it.</div>
       <div class="btns"><button class="btn primary" data-act="savePretend">Use this time</button>${S.pretend?'<button class="btn" data-act="realtime">Back to real time</button>':''}<button class="btn ghost" data-act="close">Cancel</button></div>`;
+  } else if(kind === 'chatNew'){
+    inner = `<h2 id="dlg-h">Start a new chat?</h2><p style="margin:0">This clears the conversation. Your plan stays as it is${S.draft && S.draft.kind === 'chat' && dirty() ? ', and changes you haven\'t applied are dropped' : ''}.</p>
+      <div class="btns"><button class="btn primary" data-act="doChatNew">Start new chat</button><button class="btn ghost" data-act="close">Keep this one</button></div>`;
   } else if(kind === 'reset'){
     inner = `<h2 id="dlg-h">Clear all progress?</h2><p style="margin:0">This unchecks every step, clears oven times and releases every helper job, for everyone. Your recipes and schedule stay.</p>
       <div class="btns"><button class="btn primary" data-act="doReset">Clear everything</button><button class="btn ghost" data-act="close">Keep it</button></div>`;
@@ -2997,7 +3048,8 @@ function go(v, force){
   else if(v === 'chat'){ if(S.draft && S.draft.kind !== 'chat') S.draft = null; }
   else if(!editorViews.includes(v)) S.draft = null;
   if(v === 'addDish') S.add = null;
-  S.view = v; render(); window.scrollTo(0,0);
+  if(v === 'chat') S.chatScroll = true;
+  S.view = v; window.scrollTo(0,0); render();
 }
 function openRecipeEditor(k){
   closeModal();
@@ -3089,10 +3141,12 @@ document.addEventListener('click', e => {
     case 'taskTime': closeModal(); openModal('taskTime', id); break;
     case 'saveTT': { const p2 = ttPlan(id); closeModal(); savePlan(p2); toast('Time updated.'); break; }
     case 'chatSend': chatSend(); break;
-    case 'chatExample': chatSend(v); break;
+    case 'chatImpact': S.chatImpactOpen = !S.chatImpactOpen; break;
     case 'chatStop': if(S.chat && S.chat.ctl) S.chat.ctl.abort(); break;
-    case 'chatApply': if(S.draft && S.draft.kind === 'chat'){ savePlan(clone(S.draft.plan)); S.draft = null; if(S.chat) S.chat.msgs.push({role:'ai', text:'Applied. Everyone now sees the updated plan.'}); render(); toast('Plan updated.'); } break;
-    case 'chatUndo': if(S.draft && S.draft.kind === 'chat'){ S.draft = null; if(S.chat) S.chat.msgs.push({role:'ai', text:'Undone. The plan is back to how it was.'}); render(); } break;
+    case 'chatApply': if(S.draft && S.draft.kind === 'chat'){ savePlan(clone(S.draft.plan)); S.draft = null; chatSettle('applied'); render(); toast('Applied. Everyone now sees the updated plan.'); } break;
+    case 'chatUndo': if(S.draft && S.draft.kind === 'chat'){ S.draft = null; chatSettle('undone'); render(); toast('Undone. The plan is back to how it was.'); } break;
+    case 'chatNew': openModal('chatNew'); break;
+    case 'doChatNew': { const C = chatState(); if(C.ctl && C.busy) C.ctl.abort(); C.msgs = []; C.input = ''; if(S.draft && S.draft.kind === 'chat') S.draft = null; saveChat(); closeModal(); render(); break; }
     case 'landContinue': landContinue(); break;
     case 'menu': openModal('menu'); break;
     case 'switch': closeModal(); S.view = 'landing'; S.draft = null; render(); window.scrollTo(0,0); break;
@@ -3138,7 +3192,7 @@ document.addEventListener('click', e => {
     case 'applyTime': { const t = findTask(S.draft.plan, id); t.day = document.getElementById('et-day').value; const tv = document.getElementById('et-time').value; if(tv) t.t = tv; const du = document.getElementById('et-dur'); if(du) t.dur = Math.max(0, Number(du.value)||0); closeModal(); if(t.day !== S.schedDay) toast(`Moved to ${t.day==='wed'?'Wednesday':'Thursday'}.`); render(); break; }
     case 'discard': if(S.draft){ if(S.draft.mode === 'new'){ S.draft = null; go(isHost() ? 'recipes' : homeView(), true); toast('Dish not added.'); break; } S.draft.plan = clone(S.draft.base); if(S.draft.kind==='dinner') S.draft.shift = true; render(); toast('Changes discarded.'); } break;
     case 'saveDraft': { if(!S.draft) break; const nv = commitDraft(); if(nv){ S.view = nv; window.scrollTo(0,0); } render(); break; }
-    case 'saveAndGo': if(S.draft && (dirty() || S.draft.mode === 'new')) commitDraft(); S.draft = null; afterLeave(v); break;
+    case 'saveAndGo': if(S.draft && S.draft.kind === 'chat') chatSettle('applied'); if(S.draft && (dirty() || S.draft.mode === 'new')) commitDraft(); S.draft = null; afterLeave(v); break;
     case 'declineSub': if(S.draft && S.draft.subId){ removeSub(S.draft.subId); S.draft = null; toast('Declined. It won\'t be added.'); go('recipes', true); } break;
     case 'reviewSub': openReview(id); break;
     case 'addMode': if(S.add){ const ta = document.getElementById('add-text'); if(ta) S.add.text = ta.value; const ic = document.getElementById('import-code'); if(ic) S.add.code = ic.value; const u = document.getElementById('add-url'); if(u) S.add.url = u.value; S.add.mode = v; S.add.error = ''; render(); } break;
@@ -3166,7 +3220,7 @@ document.addEventListener('click', e => {
     case 'zoom': S.zoom = v; render(); break;
     case 'gsel': S.gSel = S.gSel === id ? null : id; render(); break;
     case 'addOvenStep': { const t = {id: rid('x-'), r: S.draft.recipeId, day:'thu', t:'15:00', dur:30, who:'mm', title:'Bake', steps:[], uses:{}, oven:{temp:350, slots:1, min:30, max:35, check:''}}; S.draft.plan.tasks.push(t); render(); break; }
-    case 'discardAndGo': S.draft = null; afterLeave(v); break;
+    case 'discardAndGo': if(S.draft && S.draft.kind === 'chat') chatSettle('undone'); S.draft = null; afterLeave(v); break;
     case 'pretend': openModal('pretend'); break;
     case 'savePretend': { const val = document.getElementById('pretend-time').value; if(val){ S.pretend = {at:new Date(val).getTime(), setAt:Date.now()}; lsSet('tg-pretend', S.pretend); } closeModal(); render(); break; }
     case 'realtime': S.pretend = null; lsSet('tg-pretend', null); closeModal(); render(); break;
