@@ -1025,7 +1025,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v24 · Nov 26';
+const APP_VERSION = 'v25 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1178,6 +1178,7 @@ function fromOf(plan, t){
   const f = t.from ? at(...t.from) : at(t.day, t.t);
   return Math.min(f, dueOf(plan, t) - (t.dur||5)*60000);
 }
+function listTime(plan, t){ return t.who === 'h' ? dueOf(plan, t) - 1 : sched(plan, t, true); }
 function displayTime(plan, t){ return t.who === 'h' ? Math.min(at(t.day, t.t), dueOf(plan, t) - (t.dur||5)*60000) : sched(plan, t, true); }
 function dueLabel(plan, t){ const d = dueOf(plan, t); return 'by ' + (dayOf(d) !== t.day ? fmtDT(d) : fmtTime(d)); }
 const isDone = t => !!prog(t.id).done;
@@ -1521,7 +1522,7 @@ function renderRecipes(){
   if(!order.length) return `<div class="wrap">${top}<section class="card"><h2>No recipes yet</h2><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button></section></div>`;
   const cur = order.includes(S.recipeTab) ? S.recipeTab : order[0];
   const r = plan.recipes[cur];
-  const tasks = plan.tasks.filter(t => t.r === cur).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
+  const tasks = plan.tasks.filter(t => t.r === cur).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
   const p = progress(t => t.r === cur);
   const sub = `<nav class="subtabs" aria-label="Recipes">${order.map(k=>`<button class="subtab" data-act="recipeTab" data-v="${k}" ${k===cur?'aria-current="page"':''}><span class="tile" aria-hidden="true">${esc((plan.recipes[k].short||'?').slice(0,1).toUpperCase())}</span><span class="lbl">${esc(plan.recipes[k].short)}</span></button>`).join('')}</nav>`;
   const ovenSteps = tasks.filter(t => t.oven);
@@ -1721,7 +1722,7 @@ function renderEditRecipe(){
   const d = S.draft, plan = d.plan, k = d.recipeId, isGen = k === 'general', mode = d.mode || 'edit';
   const r = isGen ? {short:'Kitchen jobs', name:'Kitchen jobs'} : plan.recipes[k];
   if(!r) return renderRecipesAdmin();
-  const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
+  const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
   const canAI = !S.noAI && !isGen;
   const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><div class="btns">${canAI ? `<button class="btn small primary" data-act="aiUpdate">Update steps with the Assistant</button>` : ''}<button class="btn small" data-act="addTask">Add a plan step</button></div></div>
       ${canAI ? '<p class="sub" style="margin:0">Changed the ingredients or method? "Update steps with the Assistant" updates this dish\'s steps, helper jobs and oven times to match and fits them around everything else. You\'ll see every change and approve it before anything is saved.</p>' : ''}
@@ -1978,12 +1979,15 @@ function carriedOver(tasks, day){
 function planCard(tasks, title){
   const plan = S.plan, nowMs = now();
   const day = S.planDay || (nowMs < at('thu','00:00') ? 'wed' : 'thu');
-  const dayTasks = tasks.filter(t => t.day === day).sort((a,b)=>displayTime(plan,a)-displayTime(plan,b));
-  const hr = t => new Date(displayTime(plan,t)).getHours();
-  const groups = [['Morning', t=>hr(t)<12], ['Afternoon', t=>hr(t)>=12&&hr(t)<17], ['Evening', t=>hr(t)>=17]];
+  // Rows run in the order of the time they show: start time for steps, deadline for helper jobs.
+  // Helper jobs that can be done today but aren't due until tomorrow get their own group at the end.
+  const later = t => t.who === 'h' && dayOf(dueOf(plan, t)) !== day;
+  const dayTasks = tasks.filter(t => t.day === day).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  const hr = t => new Date(listTime(plan,t)).getHours();
+  const groups = [['Morning', t=>!later(t)&&hr(t)<12], ['Afternoon', t=>!later(t)&&hr(t)>=12&&hr(t)<17], ['Evening', t=>!later(t)&&hr(t)>=17], [day === 'wed' ? 'Any time today, due Thursday' : 'Due later', later]];
   const mode = S.planMode || 'list';
   const carry = carriedOver(tasks, day);
-  const carryHtml = carry.length ? `<div class="group-h carry-h">From Wednesday <span class="sub">${carry.length} still to do</span></div><div class="tasks">${carry.sort((a,b)=>(a.who==='h'?dueOf(plan,a):sched(plan,a,true))-(b.who==='h'?dueOf(plan,b):sched(plan,b,true))).map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
+  const carryHtml = carry.length ? `<div class="group-h carry-h">From Wednesday <span class="sub">${carry.length} still to do</span></div><div class="tasks">${carry.sort((a,b)=>listTime(plan,a)-listTime(plan,b)).map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
   const listHtml = carryHtml + (groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t)).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>');
   return `<section class="card" aria-labelledby="pl-h">
     <div class="card-h"><h2 id="pl-h">${esc(title)}</h2><div class="seg" role="group" aria-label="View as"><button data-act="planMode" data-v="list" aria-pressed="${mode==='list'}">${IC.list}<span>List</span></button><button data-act="planMode" data-v="timeline" aria-pressed="${mode==='timeline'}">${IC.tl}<span>Timeline</span></button></div></div>
@@ -2106,7 +2110,7 @@ function upNextList(tasks, more){
   const plan = S.plan, nowMs = now(), key = t => upNextKey(plan, t);
   const open = tasks.filter(t => !isDone(t) && !t.final).sort((a,b) => key(a) - key(b));
   const due = open.filter(t => inOven(t) || started(t) || key(t) <= nowMs);
-  return due.concat(open.filter(t => !due.includes(t)).slice(0, more));
+  return due.concat(open.filter(t => !due.includes(t)).slice(0, more)).sort((a,b) => listTime(plan,a) - listTime(plan,b));
 }
 function upNextCard(list, emptyText){
   const plan = S.plan, nowMs = now();
