@@ -739,6 +739,12 @@ body.has-nav .review{padding-bottom:230px}
 .prepped li.todo.late{color:var(--crit)}
 .prepped li.ok span b{text-decoration:none}
 .prepfor{font-size:.9rem;color:var(--muted);margin-top:8px}
+/* ---- v32: key steps (host only) ---- */
+.chip.keychip{background:var(--ink);color:var(--yellow);display:inline-flex;align-items:center;gap:4px;font-weight:700}
+.chip.keychip svg{width:12px;height:12px}
+.task.keystep{background:linear-gradient(90deg,rgba(57,23,19,.07),rgba(57,23,19,0) 75%);border-radius:14px;padding-left:10px;margin-left:-10px;padding-right:6px}
+.task.keystep .ttitle{font-weight:700}
+.task.keystep.claimed{border-radius:0}
 </style>
 </head>
 <body>
@@ -1090,7 +1096,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v31 · Nov 26';
+const APP_VERSION = 'v32 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1243,6 +1249,34 @@ function fromOf(plan, t){
   const f = t.from ? at(...t.from) : at(t.day, t.t);
   return Math.min(f, dueOf(plan, t) - (t.dur||5)*60000);
 }
+/* ============ KEY STEPS ============
+   A key step is one where running late pushes back the oven schedule or dinner itself:
+   - it goes in the oven, or an oven step can't start until it's done (slicing, assembling, changing the oven temperature);
+   - it's long stovetop / Instant Pot / air fryer cooking (15+ min) that the meal depends on, with an hour or less to spare;
+   - it has 10 minutes or less to spare before dinner.
+   Chopping, measuring and setting things out are secondary. A step's own "key": true/false (from the Assistant or the
+   editor) overrides this. Shown to the host only. */
+let KEYC = null;
+const KEY_RULE = `A "key" step is one where running late would push back dinner or the oven schedule: anything that goes in the oven; a step an oven step can't start without (preheating or changing the oven temperature, slicing or assembling what goes in); long stovetop or Instant Pot cooking the meal depends on, like getting the potatoes boiling; and the last steps right before serving. Chopping, peeling, measuring, setting out and other prep are never key. Mark key steps with "key": true.`;
+function keyMap(plan){
+  if(KEYC && KEYC.plan === plan) return KEYC.map;
+  const M = 60000, live = plan.tasks.filter(t => !t.final), deps = {}, dz = dinnerAt(plan), memo = {};
+  for(const y of live) for(const id of [...(y.needs || []), ...(y.after ? [y.after.id] : [])]) (deps[id] = deps[id] || []).push(y);
+  const toolHeat = new Set(plan.kitchen.tools.filter(x => /burner|stove|instant|air ?fryer|griddle|slow cooker|grill/i.test(x.name) || /^(burner|ip$|airfryer)/i.test(x.id)).map(x => x.id));
+  const latestEnd = t => { if(memo[t.id] != null) return memo[t.id]; memo[t.id] = dz; let v = dz; for(const y of deps[t.id] || []) if(y.who === 'mm' && !y.optional) v = Math.min(v, latestEnd(y) - len(y)*M); return memo[t.id] = v; };
+  const map = {};
+  for(const t of live){
+    if(t.key === true || t.key === false){ map[t.id] = t.key; continue; }
+    if(t.optional){ map[t.id] = false; continue; }
+    const end = at(t.day, t.t) + len(t)*M, slack = latestEnd(t) - end;
+    const gatesOven = (deps[t.id] || []).some(y => y.oven);
+    const heat = Object.entries(t.uses || {}).some(([k,q]) => q > 0 && toolHeat.has(k));
+    map[t.id] = !!(t.oven || gatesOven || (t.who === 'mm' && t.day === 'thu' && slack <= 10*M) || (t.who === 'mm' && heat && len(t) >= 15 && slack <= 60*M));
+  }
+  KEYC = {plan, map};
+  return map;
+}
+const isKey = (plan, t) => !!keyMap(plan)[t.id];
 /* ============ HELPER QUEUE ============
    Prep jobs should get done as early as they sensibly can, not left until just before their deadline.
    This plays the open helper jobs forward from now across the helpers who've joined: whenever a helper frees up,
@@ -1455,6 +1489,7 @@ async function drain(path){
 }
 
 /* ============ ICONS ============ */
+const I_KEY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="currentColor"/></svg>';
 const I_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const I_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.2 1-3.8 2.2-5 .2 1.6 1 2.6 2 3 0-3.5-.6-6.3.8-9z"/></svg>';
 const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -1556,6 +1591,8 @@ function taskRow(t, opts={}){
   const chips = [];
   if(opts.carry) chips.push('<span class="chip late">From Wednesday</span>');
   if(opts.showRecipe !== false) chips.push(`<span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span>`);
+  const keyStep = isHost() && !done && !t.final && isKey(plan, t);
+  if(keyStep) chips.unshift(`<span class="chip keychip" title="If this runs late, the oven schedule or dinner slips">${I_KEY}Key step</span>`);
   if(t.who==='h') chips.push('<span class="chip helper">Helper job</span>');
   else if(ownerOf(t.r) && ownerOf(t.r) !== S.key) chips.push(`<span class="chip helper">${esc(personName(ownerOf(t.r)))}'s dish</span>`);
   if(t.oven) chips.push(`<span class="chip ovenchip">${t.oven.temp}°F · ${rangeDur(t.oven.min, t.oven.max)}</span>`);
@@ -1596,7 +1633,7 @@ function taskRow(t, opts={}){
     timer = `<div class="sub tnum">${dur(el)} so far · check ${fmtTime(s.inOvenAt + t.oven.min*60000)}${t.oven.max!==t.oven.min?'–'+fmtTime(s.inOvenAt + t.oven.max*60000):''}</div>`;
   }
   const label = done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`;
-  return `<div class="task${done?' done':''}${t.who==='h' && s.assignee && !done ? ' claimed' : ''}"${t.who==='h' && s.assignee && !done ? ` style="--pc:${colorFor(s.assignee)}"` : ''}>
+  return `<div class="task${done?' done':''}${keyStep ? ' keystep' : ''}${t.who==='h' && s.assignee && !done ? ' claimed' : ''}"${t.who==='h' && s.assignee && !done ? ` style="--pc:${colorFor(s.assignee)}"` : ''}>
     <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
     <div class="tmain">
       <div class="trow"><div class="tmeta">${t.who==='h' ? helperTime(plan, t, opts.viewDay) : `<span class="time">${fmtTime(sc)}</span>`}${opts.withDay && t.who !== 'h' ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
@@ -1845,6 +1882,7 @@ function taskForm(plan, t){
     <div><b>${esc(t.title)}</b><div class="sub">${esc(summary)}</div><button class="vi" data-act="openTask" data-id="${t.id}" aria-expanded="${open}"><span class="vi-ic" aria-hidden="true">${open?I_MINUS:I_PLUS}</span>${open?'Close editor':'Edit this step'}</button></div>
     ${open ? `<div class="fgrid">
       <label class="field wide">Step name<input data-b="${P}title" value="${esc(t.title)}"></label>
+      <label class="field">Key step<select data-b="${P}keyMode" data-struct="1"><option value="" ${t.key == null ? 'selected' : ''}>Automatic (${keyMap(plan)[t.id] && t.key == null ? 'yes' : t.key == null ? 'no' : '…'})</option><option value="yes" ${t.key === true ? 'selected' : ''}>Yes, it's key</option><option value="no" ${t.key === false ? 'selected' : ''}>No</option></select></label>
       <label class="field">Who does it<select data-b="${P}who" data-struct="1"><option value="mm" ${t.who==='mm'?'selected':''}>Host-only (or the dish's owner)</option><option value="h" ${t.who==='h'?'selected':''}>Helper job</option></select></label>
       ${t.who==='mm' ? `
         <label class="field">Day<select data-b="${P}day"><option value="wed" ${t.day==='wed'?'selected':''}>Wednesday</option><option value="thu" ${t.day==='thu'?'selected':''}>Thursday</option></select></label>
@@ -2521,10 +2559,11 @@ RULES
 - Do not book a tool beyond its count at the same time as existing steps. Use the tool ids given.
 - Helper jobs: "for" is the exact title of the cook step they prepare for, "before" is how many minutes before that step it must be done, "from" is the earliest day and time they can start.
 - ${STEP_RULE}
+- ${KEY_RULE}
 - Times are 24h "HH:MM" in multiples of 5. Minutes are whole numbers.
 
 Reply with only JSON in this shape:
-{"name":"Full dish name","short":"1-2 word name","meta":["yield","oven temp and time","make-ahead note"],"notes":["anything the cook must not miss"],"ingredients":[{"g":"group name","items":["1 cup flour"]}],"steps":[{"h":"short title","x":"instructions"}],"tasks":[{"title":"","who":"mm","day":"thu","t":"14:00","dur":20,"steps":["line"],"uses":{"bigPot":1},"oven":{"temp":350,"min":40,"max":45,"slots":1,"check":"golden and set"},"for":null,"before":0,"from":["thu","08:00"]}]}
+{"name":"Full dish name","short":"1-2 word name","meta":["yield","oven temp and time","make-ahead note"],"notes":["anything the cook must not miss"],"ingredients":[{"g":"group name","items":["1 cup flour"]}],"steps":[{"h":"short title","x":"instructions"}],"tasks":[{"title":"","who":"mm","key":true,"day":"thu","t":"14:00","dur":20,"steps":["line"],"uses":{"bigPot":1},"oven":{"temp":350,"min":40,"max":45,"slots":1,"check":"golden and set"},"for":null,"before":0,"from":["thu","08:00"]}]}
 Use "oven": null for steps that don't use the oven. If this isn't a recipe, reply {"error":"what's wrong, in one short sentence"}.
 ${hasImages ? '' : `\nRECIPE:\n"""\n${text.slice(0, 60000)}\n"""`}`;
 }
@@ -2539,6 +2578,7 @@ function aiTasks(list, k, plan){
   return items.map(({x, id}) => {
     const day = x.day === 'wed' ? 'wed' : 'thu', t = validHM(x.t) || '12:00';
     const base = {id, r:k, day, t, title: str(x.title) || 'Step', steps: arr(x.steps)};
+    if(x.key === true && x.who !== 'h') base.key = true;
     if(x.who === 'h'){
       const d = clampInt(x.dur, 1, 240, 10), f = x.for && byTitle[str(x.for).toLowerCase()];
       const from = Array.isArray(x.from) && validHM(x.from[1]) ? [x.from[0] === 'wed' ? 'wed' : 'thu', validHM(x.from[1])] : [day, '08:00'];
@@ -2679,6 +2719,7 @@ function applyOps(plan, ops, why){
       if(!t.for && !t.due) t.due = [t.day, fromMin(toMin(t.t) + (t.dur||10))];
     }
     if(Array.isArray(f.needs)) t.needs = f.needs.map(find).filter(Boolean).map(x => x.id).filter(x => x !== t.id);
+    if(typeof f.key === 'boolean') t.key = f.key;
   };
   const when = t => t.who === 'h' ? 'needed by ' + fmtDT(dueOf(plan, t)) : fmtDT(sched(plan, t));
   for(const op of (Array.isArray(ops) ? ops : []).slice(0, 80)){
@@ -2809,7 +2850,7 @@ function planForAI(plan){
       if(t.oven) o.oven = {temp:t.oven.temp, min:t.oven.min, max:t.oven.max, slots:t.oven.slots||1};
       const u = Object.entries(t.uses||{}).filter(([,q]) => q > 0); if(u.length) o.uses = Object.fromEntries(u);
       if(t.needs && t.needs.length) o.needs = t.needs;
-      if(t.final) o.final = true; if(t.optional) o.optional = true;
+      if(t.final) o.final = true; if(t.optional) o.optional = true; if(isKey(plan, t)) o.key = true;
       if(S.tasks[t.id] && S.tasks[t.id].done) o.done = true;
       o.steps = t.steps;
       return o;
@@ -2927,10 +2968,11 @@ function planRules(plan){
 - Food: if something is made ahead, add the steps it now needs (cool, cover and refrigerate; reheat, with the tool or oven it uses, before serving) and remove steps that no longer make sense.
 - Everything must be ready by dinner (${plan.dinner} Thursday). Don't change steps marked done unless asked.
 - Helpers never do oven work, stovetop cooking, tasting or seasoning.
+- Key steps ("key": true in the PLAN) are the ones that push back the oven schedule or dinner if they run late. Protect their times first; move secondary prep around them. ${KEY_RULE} Set "key" on any step you add.
 - Step text: ${STEP_RULE} Any step you add or rewrite must follow this.`;
 }
-const OPS_SCHEMA = `{"op":"update","id":"step id","why":"short reason","set":{"day":"thu","t":"12:30","dur":40,"title":"...","steps":["..."],"uses":{"toolId":1},"oven":{"temp":350,"min":30,"max":35,"slots":1,"check":"..."},"from":["thu","09:00"],"for":{"id":"cook step id","before":10},"needs":["step id"]}},
-  {"op":"add","why":"short reason","task":{"r":"recipe id","who":"mm","day":"thu","t":"13:00","dur":20,"title":"...","steps":["..."],"uses":{},"oven":null,"needs":["step id"]}},
+const OPS_SCHEMA = `{"op":"update","id":"step id","why":"short reason","set":{"day":"thu","t":"12:30","dur":40,"key":true,"title":"...","steps":["..."],"uses":{"toolId":1},"oven":{"temp":350,"min":30,"max":35,"slots":1,"check":"..."},"from":["thu","09:00"],"for":{"id":"cook step id","before":10},"needs":["step id"]}},
+  {"op":"add","why":"short reason","task":{"r":"recipe id","who":"mm","day":"thu","t":"13:00","dur":20,"key":false,"title":"...","steps":["..."],"uses":{},"oven":null,"needs":["step id"]}},
   {"op":"delete","id":"step id","why":"short reason"}`;
 function recipeText(r){
   if(!r) return '(this dish is new)';
@@ -3320,6 +3362,7 @@ function applyBind(el){
       else if(val === 'mm') makeHostTask(plan, t);
     }
     else if(f[0] === 'for' && f[1] === 'id'){ if(val){ t.for = {id: val, before: (t.for && t.for.before) || 0}; delete t.due; } else { const due = dueOf(plan,t); t.due = [dayOf(due), hm(due)]; delete t.for; } }
+    else if(f[0] === 'keyMode'){ if(val === 'yes') t.key = true; else if(val === 'no') t.key = false; else delete t.key; }
     else if(f[0] === 'forAt'){ const tg = t.for && findTask(plan, t.for.id); if(tg){ const cur = dueOf(plan, t), day = f[1] === 'day' ? val : dayOf(cur), tm = f[1] === 'time' ? validHM(val) : hm(cur); if(tm) t.for.before = Math.round((sched(plan, tg, true) - at(day, tm)) / 60000); } }
     else if(f[0] === 'due'){ const cur = dueOf(plan, t); t.due = f[1] === '0' ? [val, t.due ? t.due[1] : hm(cur)] : [t.due ? t.due[0] : dayOf(cur), val]; }
     else if(f[0] === 'oven' && (f[1] === 'min' || f[1] === 'max')){ setPath(t, f, val); if(t.oven.max < t.oven.min) t.oven[f[1]==='min'?'max':'min'] = val; t.dur = t.oven.min; }
