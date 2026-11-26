@@ -1025,7 +1025,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v25 · Nov 26';
+const APP_VERSION = 'v26 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1451,7 +1451,7 @@ function taskRow(t, opts={}){
   return `<div class="task${done?' done':''}${t.who==='h' && s.assignee && !done ? ' claimed' : ''}"${t.who==='h' && s.assignee && !done ? ` style="--pc:${colorFor(s.assignee)}"` : ''}>
     <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
     <div class="tmain">
-      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay && !(t.who==='h' && dayOf(dueOf(plan,t)) !== t.day) ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
+      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(opts.viewDay && dayOf(dueOf(plan,t)) === opts.viewDay ? 'by ' + fmtTime(dueOf(plan,t)) : dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay && !(t.who==='h' && dayOf(dueOf(plan,t)) !== t.day) ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
       ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>`}
       ${t.who === 'h' ? claimBar(t, s, done) : ''}
       ${opts.forceOpen ? '' : viLink(t.id, open, opts.open)}
@@ -1981,14 +1981,18 @@ function planCard(tasks, title){
   const day = S.planDay || (nowMs < at('thu','00:00') ? 'wed' : 'thu');
   // Rows run in the order of the time they show: start time for steps, deadline for helper jobs.
   // Helper jobs that can be done today but aren't due until tomorrow get their own group at the end.
+  // Leftovers from Wednesday: what matters is when they're due, not when they could have been done.
+  // Ones whose time has already passed (Wednesday cook steps, helper jobs due Wednesday) are behind and go first;
+  // helper jobs that just weren't done early slot into today's list at their deadline.
   const later = t => t.who === 'h' && dayOf(dueOf(plan, t)) !== day;
-  const dayTasks = tasks.filter(t => t.day === day).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  const carry = carriedOver(tasks, day);
+  const behind = carry.filter(t => listTime(plan,t) < at(day,'00:00')).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  const dayTasks = tasks.filter(t => t.day === day).concat(carry.filter(t => !behind.includes(t))).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
   const hr = t => new Date(listTime(plan,t)).getHours();
   const groups = [['Morning', t=>!later(t)&&hr(t)<12], ['Afternoon', t=>!later(t)&&hr(t)>=12&&hr(t)<17], ['Evening', t=>!later(t)&&hr(t)>=17], [day === 'wed' ? 'Any time today, due Thursday' : 'Due later', later]];
   const mode = S.planMode || 'list';
-  const carry = carriedOver(tasks, day);
-  const carryHtml = carry.length ? `<div class="group-h carry-h">From Wednesday <span class="sub">${carry.length} still to do</span></div><div class="tasks">${carry.sort((a,b)=>listTime(plan,a)-listTime(plan,b)).map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
-  const listHtml = carryHtml + (groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t)).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>');
+  const carryHtml = behind.length ? `<div class="group-h carry-h">Behind from Wednesday <span class="sub">${behind.length} still to do</span></div><div class="tasks">${behind.map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
+  const listHtml = carryHtml + (groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t, {viewDay: day})).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>');
   return `<section class="card" aria-labelledby="pl-h">
     <div class="card-h"><h2 id="pl-h">${esc(title)}</h2><div class="seg" role="group" aria-label="View as"><button data-act="planMode" data-v="list" aria-pressed="${mode==='list'}">${IC.list}<span>List</span></button><button data-act="planMode" data-v="timeline" aria-pressed="${mode==='timeline'}">${IC.tl}<span>Timeline</span></button></div></div>
     <div class="card-h"><div class="seg" role="group" aria-label="Day"><button data-act="planDay" data-v="wed" aria-pressed="${day==='wed'}">Wednesday</button><button data-act="planDay" data-v="thu" aria-pressed="${day==='thu'}">Thursday</button></div><span class="sub">${DAY_LABEL[day]}</span></div>
@@ -2009,9 +2013,11 @@ function gantt(tasks, day){
   const startOf = t => { if(t.who === 'h'){ const d = displayTime(plan, t); return dayOf(d) === day ? d : at(day, t.t); } return sched(plan, t, true); };
   const lenOf = t => Math.max(1, t.who === 'h' ? (t.dur||5) : len(t)) * M;
   const all = tasks.filter(t => t.day === day && !t.final);
-  const carry = carriedOver(tasks, day), carryIds = new Set(carry.map(t => t.id));
+  const carry = carriedOver(tasks, day);
+  const carryIds = new Set(carry.filter(t => listTime(plan,t) < at(day,'00:00')).map(t => t.id));
+  const dueLater = new Set(carry.filter(t => !carryIds.has(t.id)).map(t => t.id));
   const cStart = Math.min(Math.max(nowMs, at(day,'07:00')), at(day,'23:00'));
-  const pos = t => carryIds.has(t.id) ? cStart : startOf(t);
+  const pos = t => carryIds.has(t.id) ? cStart : dueLater.has(t.id) ? Math.max(at(day,'00:00'), dueOf(plan,t) - lenOf(t)) : startOf(t);
   const items = all.concat(carry);
   if(!items.length) return '<p class="empty">Nothing planned this day.</p>';
   // Time axis: busy stretches get the room; idle stretches (45+ min with nothing going on) shrink to a narrow "break" band
@@ -2038,7 +2044,7 @@ function gantt(tasks, day){
     if(inOven(t) || started(t)) return 'live';
     if(carryIds.has(t.id)) return 'carry';
     if(day === 'wed' && nowMs >= at('thu','00:00') && !t.final) return 'moved';
-    if(!t.optional && nowMs > startOf(t) + 10*M) return 'late';
+    if(!t.optional && nowMs > pos(t) + 10*M) return 'late';
     return 'todo'; };
     // Group by dish, in the plan's dish order; kitchen chores last
   const order = [...(plan.recipeOrder||[]), ...Object.keys(plan.recipes).filter(r => !(plan.recipeOrder||[]).includes(r))];
