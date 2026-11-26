@@ -725,6 +725,20 @@ body.has-nav .review{padding-bottom:230px}
 .team-btns .btn svg{width:18px;height:18px;margin-right:4px;vertical-align:-3px}
 .nj-quick .btns{margin-top:4px}
 .fgrid.nj input[type=text]{width:100%}
+/* ---- v31: prep status inside instructions ---- */
+.prepped{background:var(--white);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;display:grid;gap:6px}
+.prepped-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.prepped-h span{font-size:.85rem;color:var(--muted)}
+.prepped ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.prepped li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;font-size:.92rem;line-height:1.35}
+.prepped .pi{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;font-size:.75rem;font-weight:700;margin-top:1px}
+.prepped li.ok .pi{background:var(--good);color:#fff}
+.prepped li.doing .pi{background:var(--yellow);color:var(--ink)}
+.prepped li.todo .pi{border:1.5px solid var(--orange);color:transparent}
+.prepped li.todo.late .pi{border-color:var(--crit)}
+.prepped li.todo.late{color:var(--crit)}
+.prepped li.ok span b{text-decoration:none}
+.prepfor{font-size:.9rem;color:var(--muted);margin-top:8px}
 </style>
 </head>
 <body>
@@ -1076,7 +1090,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v30 · Nov 26';
+const APP_VERSION = 'v31 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1475,9 +1489,41 @@ function neededBy(ms, done){
   const cls = done ? 'ok' : left < 0 ? 'late' : left <= 20 ? 'soon' : '';
   return `<div class="needby ${cls}">${I_CLOCK}<span><b>Needed by ${esc(fmtRel(ms))}</b>${done ? '' : ` · ${esc(relTo(ms))}`}</span></div>`;
 }
+/* What was prepped for a step by someone else, shown at the top of its instructions so nobody preps it twice.
+   Sources: helper jobs that are "for" this step, and steps it "needs" (an earlier step that made something it uses). */
+function prepSources(plan, t){
+  const out = plan.tasks.filter(x => x.id !== t.id && !x.final && x.who === 'h' && x.for && x.for.id === t.id);
+  for(const id of t.needs || []){ const x = findTask(plan, id); if(x && !x.final && !out.includes(x)) out.push(x); }
+  const when = x => x.who === 'h' ? dueOf(plan, x) : sched(plan, x, true);
+  return out.sort((a,b) => when(a) - when(b));
+}
+function prepBlock(plan, t){
+  const src = prepSources(plan, t); if(!src.length) return '';
+  const nm = k => k === S.key ? 'you' : personName(k);
+  const items = src.map(x => {
+    const s = prog(x.id), when = x.who === 'h' ? dueOf(plan, x) : sched(plan, x, true);
+    if(s.done){ const by = s.doneBy || s.assignee; return {cls:'ok', ico:'✓', title:x.title, txt:`Done${by ? ' by ' + nm(by) : ''}${s.doneAt ? ' at ' + fmtTime(s.doneAt) : ''}. It's ready, so use it rather than making it again.`}; }
+    if(inOven(x)) return {cls:'doing', ico:'◐', title:x.title, txt:`In the oven since ${fmtTime(s.inOvenAt)}.`};
+    if(started(x)) return {cls:'doing', ico:'◐', title:x.title, txt:`Under way, started at ${fmtTime(s.startedAt)}.`};
+    if(s.assignee) return {cls:'doing', ico:'◐', title:x.title, txt:`${s.assignee === S.key ? 'You\'re' : personName(s.assignee) + ' is'} doing it now. Check before you start on it yourself.`};
+    if(s.offer && s.offer.to) return {cls:'todo', ico:'○', title:x.title, txt:`Not done yet. ${personName(s.offer.to)} has been asked and hasn't answered.`};
+    return {cls:'todo' + (when < now() ? ' late' : ''), ico:'○', title:x.title, txt:`Not done yet (${x.who === 'h' ? 'needed by' : 'planned for'} ${fmtTime(when)}). Do it first, or ask someone.`};
+  });
+  const ready = items.filter(i => i.cls === 'ok').length;
+  return `<div class="prepped"><div class="prepped-h"><b>Prep for this step</b><span>${ready === items.length ? 'All ready' : ready + ' of ' + items.length + ' ready'}</span></div>
+    <ul>${items.map(i => `<li class="${i.cls}"><span class="pi" aria-hidden="true">${i.ico}</span><span><b>${esc(i.title)}</b> ${esc(i.txt)}</span></li>`).join('')}</ul></div>`;
+}
+/* For a helper job: which step it's for, so the prepper knows where it's going */
+function prepForNote(plan, t){
+  const tg = t.who === 'h' && t.for ? findTask(plan, t.for.id) : null; if(!tg) return '';
+  const own = ownerOf(tg.r), who = tg.who === 'h' ? '' : (own && S.people[own] ? (own === S.key ? 'you' : personName(own)) : (isHost() ? 'you' : 'the host'));
+  return `<div class="prepfor">This is prep for <b>${esc(tg.title)}</b>${who ? ` (${esc(who)}, ${esc(fmtTime(sched(plan, tg, true)))})` : ''}. When you mark it done, they'll see it's ready.</div>`;
+}
 function detail(t){
   const plan = S.plan, parts = [];
+  const pb = prepBlock(plan, t); if(pb) parts.push(pb);
   if(t.steps && t.steps.length) parts.push(`<ol>${t.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`);
+  const pf = prepForNote(plan, t); if(pf) parts.push(pf);
   if(t.oven) parts.push(`<div><b>Done when:</b> ${esc(t.oven.check || '')}</div>`);
   if(t.out) parts.push(`<div><b>When it comes out:</b> ${t.out.map(esc).join(' ')}</div>`);
   if(t.who==='h') parts.push(`<div class="uses">Helper job · can start ${esc(fmtDT(fromOf(plan,t)))} · needed by ${esc(fmtDT(dueOf(plan,t)))}</div>`);
@@ -2012,7 +2058,7 @@ function jobCard(t, mode){
     ${mode==='done' ? '' : viLink(t.id, open, mode==='mine')}
     ${mode==='done' ? `<div class="sub">Done ${s.doneAt ? esc(fmtRel(s.doneAt)) : ''}</div>` : neededBy(due, false)}
     ${startNote}
-    ${open && mode!=='done' ? `<ol>${t.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${t.notes&&t.notes.length?`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}` : ''}
+    ${open && mode!=='done' ? `${prepBlock(plan, t)}<ol>${t.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${prepForNote(plan, t)}${t.notes&&t.notes.length?`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}` : ''}
     <div class="btns">${btns}</div>
   </div>`;
 }
@@ -2064,7 +2110,7 @@ function offersCard(){
       <h3>${esc(t.title)}</h3>
       ${neededBy(dueOf(plan, t), false)}
       ${t.steps && t.steps.length ? viLink(t.id, open) : ''}
-      ${open ? `<ol>${t.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+      ${open ? `${prepBlock(plan, t)}<ol>${t.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${prepForNote(plan, t)}` : ''}
       <div class="btns"><button class="btn primary" data-act="acceptOffer" data-id="${t.id}">Accept</button><button class="btn ghost" data-act="declineOffer" data-id="${t.id}">No thanks</button></div>
     </div>`; }).join('')}
   </section>`;
