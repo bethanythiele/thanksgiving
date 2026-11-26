@@ -708,6 +708,23 @@ body.has-nav .review{padding-bottom:230px}
 .startbadge.go{background:var(--good-soft);border-radius:12px;padding:8px 12px;font-size:1rem;width:fit-content;max-width:100%}
 .startbadge.go svg{width:18px;height:18px;flex-basis:18px}
 .startbadge.go span{color:var(--good);opacity:.85}
+/* ---- v30: asking someone, new jobs ---- */
+.claimbar.asked{background:var(--yellow2);box-shadow:inset 0 0 0 1.5px var(--yellow);color:var(--ink)}
+@media (max-width:719px){ .claimbar.asked{display:grid;grid-template-columns:auto auto;column-gap:8px;row-gap:0;padding:6px 14px 6px 6px} .claimbar.asked .avatar{grid-row:1 / span 2;align-self:center} }
+.card.asked{box-shadow:0 0 0 3px var(--yellow);}
+.job.ask{border-color:var(--yellow);background:#FFFBEA}
+.ask-who{margin:0;font-size:.92rem;color:var(--orange-ink)}
+.pick-people,.pick-jobs{display:grid;gap:8px;max-height:55vh;overflow-y:auto}
+.pperson,.pjob{display:flex;align-items:center;gap:12px;text-align:left;font:inherit;color:var(--ink);background:var(--white);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;min-height:56px}
+.pperson:hover,.pjob:hover{border-color:var(--orange)}
+.pperson.on{border-color:var(--yellow);background:var(--yellow2)}
+.pperson .sub,.pjob .sub{display:block;font-size:.85rem}
+.pjob{display:grid;gap:2px}
+.pjob .go{color:var(--good);font-weight:700}
+.team-btns{margin:0}
+.team-btns .btn svg{width:18px;height:18px;margin-right:4px;vertical-align:-3px}
+.nj-quick .btns{margin-top:4px}
+.fgrid.nj input[type=text]{width:100%}
 </style>
 </head>
 <body>
@@ -1059,7 +1076,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v29 · Nov 26';
+const APP_VERSION = 'v30 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1480,7 +1497,8 @@ function helperTime(plan, t, viewDay){
 function claimBar(t, s, done){
   const a = s.assignee, av = k => `<span class="avatar xs" style="background:${colorFor(k)}" aria-hidden="true">${esc((personName(k)||'?').slice(0,1).toUpperCase())}</span>`;
   if(done){ const by = s.doneBy || a; return `<div class="claimbar donebar">${I_CHECK}<span>Done${by ? ' by <b>' + (by === S.key ? 'you' : esc(personName(by))) + '</b>' : ''}${s.doneAt ? ' · ' + esc(fmtTime(s.doneAt)) : ''}</span></div>`; }
-  if(!a){ const left = dueOf(S.plan, t) - now(); return `<div class="claimbar open${left < 3600000 ? ' urgent' : ''}"><span class="cb-dot" aria-hidden="true"></span><span>${left < 0 ? 'Nobody claimed this, and it\'s late' : 'Open · nobody has claimed it'}</span></div>`; }
+  if(!a && s.offer && s.offer.to){ const to = s.offer.to; return `<div class="claimbar asked" style="--pc:${colorFor(to)}">${av(to)}<span>${to === S.key ? '<b>You\'ve</b> been asked' : 'Asked <b>' + esc(personName(to)) + '</b>'}</span><span class="cb-when">waiting for an answer</span></div>`; }
+  if(!a){ const left = dueOf(S.plan, t) - now(), no = s.declined && s.declined.by && now() - s.declined.at < 3*3600000 ? ` · ${esc(personName(s.declined.by))} said no` : ''; return `<div class="claimbar open${left < 3600000 ? ' urgent' : ''}"><span class="cb-dot" aria-hidden="true"></span><span>${left < 0 ? 'Nobody claimed this, and it\'s late' : 'Open · nobody has claimed it'}${no}</span></div>`; }
   const when = s.claimedAt ? `<span class="cb-when">since ${esc(fmtTime(s.claimedAt))}</span>` : '';
   if(a === S.key) return `<div class="claimbar mine" style="--pc:${colorFor(a)}">${av(a)}<span><b>You're</b> doing this</span>${when}</div>`;
   return `<div class="claimbar taken" style="--pc:${colorFor(a)}">${av(a)}<span><b>${esc(personName(a))}</b> is doing this</span>${when}</div>`;
@@ -1517,6 +1535,7 @@ function taskRow(t, opts={}){
   }
   if(!done && !opts.readonly && t.who==='h'){
     if(!s.assignee) actions += `<button class="btn small" data-act="claim" data-id="${t.id}">I'm doing this</button>`;
+    if(!s.assignee && isHost()) actions += s.offer && s.offer.to ? `<button class="btn small ghost" data-act="cancelOffer" data-id="${t.id}">Cancel request</button>` : `<button class="btn small ghost" data-act="ask" data-id="${t.id}">Ask someone</button>`;
     else if(s.assignee === S.key) actions += `<button class="btn small ghost" data-act="release" data-id="${t.id}">Give it back</button>`;
     else if(isHost()) actions += `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign ${esc(personName(s.assignee))}</button>`;
   }
@@ -1563,7 +1582,7 @@ function header(){
 function bottomNav(){
   const host = effRole() === 'host';
   const items = host ? [['dashboard','Dashboard',IC.home],['recipes','Recipes',IC.book],['helpers','Helpers',IC.people],['chat','Assistant',IC.chat]]
-                     : [['mine','My dishes',IC.home],['recipes','Recipes',IC.book],['help','Help out',IC.people]];
+                     : [['mine','My tasks',IC.home],['recipes','Recipes',IC.book],['help','Help out',IC.people]];
   const cur = items.some(([k]) => k === S.view) ? S.view : (['editRecipe','recipesAdmin','addDish'].includes(S.view) ? 'recipes' : null);
   return `<nav class="bnav" aria-label="Sections"><div class="bnav-in" style="grid-template-columns:repeat(${items.length},1fr)">${items.map(([k,l,i])=>`<button data-act="go" data-v="${k}" ${cur===k?'aria-current="page"':''}>${i}<span>${l}</span></button>`).join('')}</div></nav>`;
 }
@@ -1678,9 +1697,12 @@ function renderHelpersAdmin(){
         <div class="pc-name"><b>${esc(x.p.name || 'Someone')}</b><div class="sub">${role}${x.p.joinedAt ? ' · joined ' + esc(fmtDT(x.p.joinedAt)) : ''}</div></div>
         <div class="pc-done"><b class="tnum">${x.done}</b><span>done</span></div></div>
       ${x.act.length ? `<p class="pc-l">Working on</p><ul class="pjobs">${x.act.map(jobLi).join('')}</ul>` : '<p class="pc-idle">Not on anything right now</p>'}
+      ${(() => { const asked = plan.tasks.filter(t => t.who === 'h' && (offerOf(t) || {}).to === x.k); return asked.length ? `<p class="pc-l">Asked, waiting for an answer</p><ul class="pjobs">${asked.map(t => `<li class="pj"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}due ${esc(fmtDT(dueOf(plan,t)))}</div></div><button class="btn small ghost" data-act="cancelOffer" data-id="${t.id}">Cancel</button></li>`).join('')}</ul>` : ''; })()}
+      <div class="btns"><button class="btn small" data-act="askPerson" data-v="${esc(x.k)}">Ask ${esc(x.p.name || 'them')} to do a job</button></div>
     </article>`;
   };
   const team = `<section class="card" aria-labelledby="team-h"><div class="card-h"><h2 id="team-h">Who's helping</h2><span class="sub">${people.length} joined${people.length ? ' · ' + working + ' working' : ''}</span></div>
+    <div class="btns team-btns"><button class="btn small primary" data-act="newJob">${IC.plus2}New helper job</button></div>
     ${people.length ? `<div class="pgrid">${roster.map(card).join('')}</div>` : '<p class="empty">Nobody has joined yet. Share the page link; people enter their name and pick their dishes or "I\'m helping."</p>'}
     ${mine.length ? `<p class="pc-l" style="margin-top:6px">You're doing</p><ul class="pjobs">${mine.map(jobLi).join('').replace(/>Unassign</g, '>Give it back<')}</ul>` : ''}
   </section>`;
@@ -1695,7 +1717,8 @@ function renderHelpersAdmin(){
         ${viLink(t.id, o)}
         ${neededBy(dueOf(plan,t), false)}
         ${o ? detail(t) : ''}
-        <div class="btns"><button class="btn small" data-act="claim" data-id="${t.id}">I'm doing this</button><button class="btn small ghost" data-act="toMM" data-id="${t.id}">Make host-only task</button><button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button><button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
+        ${offerOf(t) ? claimBar(t, prog(t.id), false) : ''}
+        <div class="btns"><button class="btn small" data-act="claim" data-id="${t.id}">I'm doing this</button>${offerOf(t) ? `<button class="btn small ghost" data-act="cancelOffer" data-id="${t.id}">Cancel request</button>` : `<button class="btn small ghost" data-act="ask" data-id="${t.id}">Ask someone</button>`}<button class="btn small ghost" data-act="toMM" data-id="${t.id}">Make host-only task</button><button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button><button class="btn small ghost" data-act="editTask" data-id="${t.id}">Edit job</button></div>
       </div></div>`;
     }).join('') : '<p class="empty">Every helper job has someone on it.</p>'}</div>
   </section>`;
@@ -1999,15 +2022,16 @@ function renderHelper(){
   const mine = hj.filter(t => prog(t.id).assignee === me);
   const doing = mine.filter(t => !isDone(t)).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const did = hj.filter(t => isDone(t) && (prog(t.id).assignee === me || prog(t.id).doneBy === me));
-  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee);
+  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee && !offerOf(t));
   const ready = open.filter(t => fromOf(plan,t) <= nowMs + 30*60000).sort((a,b)=>listTime(plan,a)-listTime(plan,b) || dueOf(plan,a)-dueOf(plan,b));
   const later = open.filter(t => fromOf(plan,t) > nowMs + 30*60000).sort((a,b)=>fromOf(plan,a)-fromOf(plan,b));
-  const taken = hj.filter(t => !isDone(t) && prog(t.id).assignee && prog(t.id).assignee !== me).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  const taken = hj.filter(t => !isDone(t) && ((prog(t.id).assignee && prog(t.id).assignee !== me) || ((offerOf(t) || {}).to && offerOf(t).to !== me))).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const who = k => { const p = S.people[k]; return esc(personName(k)) + (p && roleOf(p) === 'host' ? ' (host)' : ''); };
   const takenHtml = taken.length ? `<section class="card" aria-labelledby="tk-h"><div class="card-h"><h2 id="tk-h">Already taken</h2><span class="sub">${taken.length}</span></div>
       <p class="sub" style="margin:0">Someone's already on these, so you don't need to pick them up.</p>
-      <ul class="taken">${taken.map(t => `<li><span class="avatar sm" style="background:${colorFor(prog(t.id).assignee)}" aria-hidden="true">${esc((personName(prog(t.id).assignee)||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(t.title)}</b><div class="sub">${who(prog(t.id).assignee)} is doing this · ${esc(dueLabel(plan,t))}</div></div></li>`).join('')}</ul></section>` : '';
+      <ul class="taken">${taken.map(t => { const k = prog(t.id).assignee || offerOf(t).to; return `<li><span class="avatar sm" style="background:${colorFor(k)}" aria-hidden="true">${esc((personName(k)||'?').slice(0,1).toUpperCase())}</span><div><b>${esc(t.title)}</b><div class="sub">${prog(t.id).assignee ? who(prog(t.id).assignee) + ' is doing this' : esc(personName(offerOf(t).by)) + ' asked ' + who(offerOf(t).to) + ' · waiting'} · ${esc(dueLabel(plan,t))}</div></div></li>`; }).join('')}</ul></section>` : '';
   return `<div class="wrap">
+    ${offersCard()}
     <section class="card" aria-labelledby="mine-h"><div class="card-h"><h2 id="mine-h">Your jobs</h2><span class="sub">${doing.length} to do · ${did.length} done</span></div>
       <p class="sub" style="margin:0">Pick a prep job, follow the steps, and tap Mark done when you finish. Bethany handles the oven and the seasoning.</p>
       ${doing.length ? doing.map(t=>jobCard(t,'mine')).join('') : '<p class="empty">You haven\'t picked a job yet. Choose one below.</p>'}</section>
@@ -2019,6 +2043,78 @@ function renderHelper(){
     ${takenHtml}
     ${did.length ? `<section class="card"><h2>Finished</h2>${did.map(t=>jobCard(t,'done')).join('')}</section>` : ''}
   </div>`;
+}
+
+/* ============ ASKING SOMEONE TO DO A JOB ============
+   The host can ask a particular person to do a helper job. It isn't theirs until they accept:
+   the request sits on the job (offer: {to, by, at}) and shows at the top of their screen with Accept / No thanks. */
+function canBeAsked(){ return Object.entries(S.people).filter(([k,p]) => roleOf(p) !== 'host' && k !== S.key); }
+function offerOf(t){ const s = prog(t.id); return !isDone(t) && !s.assignee && s.offer && s.offer.to ? s.offer : null; }
+function busyText(k){
+  const n = S.plan.tasks.filter(t => t.who === 'h' && !isDone(t) && prog(t.id).assignee === k).length;
+  return n ? `On ${n} job${n > 1 ? 's' : ''}` : 'Free right now';
+}
+function offersCard(){
+  const plan = S.plan, mine = plan.tasks.filter(t => t.who === 'h' && (offerOf(t) || {}).to === S.key);
+  if(!mine.length) return '';
+  return `<section class="card asked" aria-labelledby="ask-h"><div class="card-h"><h2 id="ask-h">${mine.length > 1 ? 'You\'ve been asked to help' : 'You\'ve been asked to help'}</h2><span class="sub">${mine.length}</span></div>
+    ${mine.map(t => { const o = offerOf(t), open = S.expanded.has(t.id); return `<div class="job ask">
+      <div class="trow"><div class="tmeta"><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span><span class="chip">about ${t.dur||5} min</span></div></div>
+      <p class="ask-who"><b>${esc(personName(o.by))}</b> asked you to do this</p>
+      <h3>${esc(t.title)}</h3>
+      ${neededBy(dueOf(plan, t), false)}
+      ${t.steps && t.steps.length ? viLink(t.id, open) : ''}
+      ${open ? `<ol>${t.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+      <div class="btns"><button class="btn primary" data-act="acceptOffer" data-id="${t.id}">Accept</button><button class="btn ghost" data-act="declineOffer" data-id="${t.id}">No thanks</button></div>
+    </div>`; }).join('')}
+  </section>`;
+}
+function askModalHtml(id){
+  const t = findTask(S.plan, id); if(!t) return '';
+  const people = canBeAsked(), o = offerOf(t);
+  return `<div class="card-h"><h2 id="dlg-h">Ask someone</h2><button class="btn small ghost" data-act="close">Close</button></div>
+    <p class="sub" style="margin:0"><b>${esc(t.title)}</b> · needed by ${esc(fmtDT(dueOf(S.plan, t)))}. It becomes theirs once they accept.</p>
+    ${people.length ? `<div class="pick-people">${people.map(([k,p]) => `<button class="pperson${o && o.to === k ? ' on' : ''}" data-act="doAsk" data-id="${t.id}" data-v="${esc(k)}"><span class="avatar sm" style="background:${colorFor(k)}" aria-hidden="true">${esc((p.name||'?').slice(0,1).toUpperCase())}</span><span><b>${esc(p.name||'Someone')}</b><span class="sub">${o && o.to === k ? 'Already asked · waiting' : busyText(k)}</span></span></button>`).join('')}</div>`
+      : '<p class="empty">Nobody else has joined yet.</p>'}`;
+}
+function askPersonModalHtml(k){
+  const plan = S.plan, p = S.people[k]; if(!p) return '';
+  const open = plan.tasks.filter(t => t.who === 'h' && !isDone(t) && !prog(t.id).assignee).sort(byListTime(plan));
+  return `<div class="card-h"><h2 id="dlg-h">Ask ${esc(p.name)} to…</h2><button class="btn small ghost" data-act="close">Close</button></div>
+    <p class="sub" style="margin:0">Pick a job. It becomes ${esc(p.name)}'s once they accept. Jobs at the top should start soonest.</p>
+    <div class="pick-jobs">${open.length ? open.map(t => { const o = offerOf(t), q = helperQueue(plan)[t.id]; return `<button class="pjob" data-act="doAsk" data-id="${t.id}" data-v="${esc(k)}"><b>${esc(t.title)}</b><span class="sub">${q && startsNow(q.start) ? '<span class="go">Start now</span> · ' : ''}${esc(recipeOf(plan,t.r).short)} · about ${t.dur||5} min · due ${esc(fmtDT(dueOf(plan,t)))}${o ? ' · asked ' + esc(personName(o.to)) : ''}</span></button>`; }).join('') : '<p class="empty">No open jobs right now. You can make a new one.</p>'}</div>
+    <div class="btns"><button class="btn" data-act="newJob" data-v="${esc(k)}">New job for ${esc(p.name)}</button></div>`;
+}
+/* Brand-new jobs that aren't part of a recipe: bring the host a coffee, a grocery run, etc. */
+function newJobModalHtml(toKey){
+  const nowMs = now(), round = ms => Math.ceil(ms / 300000) * 300000;
+  const people = canBeAsked();
+  return `<div class="card-h"><h2 id="dlg-h">New helper job</h2><button class="btn small ghost" data-act="close">Close</button></div>
+    <div class="fgrid nj">
+      <label class="field wide">What needs doing<input id="nj-title" type="text" maxlength="90" placeholder="e.g. Grocery run: heavy cream and chives"></label>
+      <label class="field wide">Details <span class="sub" style="font-weight:400">optional, one per line</span><textarea id="nj-steps" rows="3" placeholder="Where to go, what to get, how much…"></textarea></label>
+      <label class="field">Takes about (min)<input id="nj-dur" type="number" min="1" max="240" value="15"></label>
+      <label class="field">Needed by<input id="nj-due" type="time" value="${hm(round(nowMs + 30*60000))}"></label>
+      <div class="field wide nj-quick"><span class="sub">Quick pick</span><div class="btns"><button class="btn small" data-act="njQuick" data-v="15">ASAP</button><button class="btn small" data-act="njQuick" data-v="30">In 30 min</button><button class="btn small" data-act="njQuick" data-v="60">In 1 hour</button></div></div>
+      <label class="field wide">Who<select id="nj-to"><option value="">Anyone can claim it</option>${people.map(([k,p]) => `<option value="${esc(k)}" ${k === toKey ? 'selected' : ''}>Ask ${esc(p.name)} (${esc(busyText(k).toLowerCase())})</option>`).join('')}</select></label>
+    </div>
+    <p class="formerr" id="nj-err" role="alert"></p>
+    <div class="btns"><button class="btn primary" data-act="saveNewJob">Add job</button><button class="btn ghost" data-act="close">Cancel</button></div>`;
+}
+function saveNewJob(){
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const title = str(v('nj-title')), err = document.getElementById('nj-err');
+  if(!title){ if(err) err.textContent = 'Say what needs doing.'; document.getElementById('nj-title').focus(); return; }
+  const nowMs = now(), day = dayOf(nowMs), dur = clampInt(v('nj-dur'), 1, 240, 15);
+  let dueT = validHM(v('nj-due')) || hm(nowMs + 30*60000);
+  if(at(day, dueT) < nowMs + dur*60000) dueT = hm(Math.ceil((nowMs + dur*60000) / 300000) * 300000);
+  const t = {id: rid('j-'), r:'general', who:'h', day, t: hm(Math.floor(nowMs / 300000) * 300000), dur, title,
+    steps: v('nj-steps').split('\n').map(str).filter(Boolean), from:[day, hm(Math.floor(nowMs / 300000) * 300000)], due:[day, dueT], adhoc:true};
+  const p = clone(S.plan); p.tasks.push(t); savePlan(p);
+  const to = v('nj-to');
+  if(to){ saveTask(t.id, {offer:{to, by:S.key, at:Date.now()}}); toast(`Added. ${personName(to)} will see your request.`); }
+  else toast('Added to the open helper jobs.');
+  closeModal();
 }
 
 /* ============ ROLES ============ */
@@ -2282,7 +2378,7 @@ function renderOwner(){
   const empty = !mine.length && !pend.length ? `<section class="card"><h2>No dishes yet</h2><p class="sub" style="margin:0">Pick a dish you're making from the sign-in screen, or add a new one.</p><div class="btns"><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button><button class="btn" data-act="switch">Pick a dish</button></div></section>` : '';
   const al = liveAlerts(myTask);
   const nextHtml = upNextCard(upNextList(tasks, 3), '');
-  return `<div class="wrap split"><div class="col">${empty}${hero}${pendHtml}${alertsCard(al)}${nextHtml}${tasks.length ? planCard(tasks, 'Your plan') : ''}</div><aside class="rail">${ovenCard()}</aside></div>`;
+  return `<div class="wrap split"><div class="col">${offersCard()}${empty}${hero}${pendHtml}${alertsCard(al)}${nextHtml}${tasks.length ? planCard(tasks, 'Your plan') : ''}</div><aside class="rail">${ovenCard()}</aside></div>`;
 }
 
 /* ============ ADD A DISH (step 1) ============ */
@@ -3058,6 +3154,7 @@ function openModal(kind, id){
       mi('go','dinner',IC.clock,'Dinner time','Change your goal'),
       mi('go','kitchen',IC.pot,'Kitchen setup','Oven space, burners and tools'),
       mi('go','helpers',IC.clip,'Helper jobs','Progress and who does what'),
+      mi('newJob','',IC.plus2,'New helper job','An errand or anything not in a recipe'),
       mi('pretend','',IC.replay,'Rehearse', S.pretend ? 'Pretend time is on' : 'Preview a pretend time'),
       mi('askReset','',IC.trash,'Clear all progress','Uncheck everything for everyone')
     ].join('') : [mi('go','addDish',IC.plus2,'Add a dish','Paste a recipe or add a photo')].join('');
@@ -3092,6 +3189,9 @@ function openModal(kind, id){
       <label class="field" for="pretend-time">Date and time<input id="pretend-time" type="datetime-local" value="${val}" min="2026-11-24T00:00" max="2026-11-27T00:00"></label>
       <div class="sub">The clock keeps running from there. Only this device sees it.</div>
       <div class="btns"><button class="btn primary" data-act="savePretend">Use this time</button>${S.pretend?'<button class="btn" data-act="realtime">Back to real time</button>':''}<button class="btn ghost" data-act="close">Cancel</button></div>`;
+  } else if(kind === 'ask'){ inner = askModalHtml(id);
+  } else if(kind === 'askPerson'){ inner = askPersonModalHtml(id);
+  } else if(kind === 'newJob'){ inner = newJobModalHtml(id);
   } else if(kind === 'chatNew'){
     inner = `<h2 id="dlg-h">Start a new chat?</h2><p style="margin:0">This clears the conversation. Your plan stays as it is${S.draft && S.draft.kind === 'chat' && dirty() ? ', and changes you haven\'t applied are dropped' : ''}.</p>
       <div class="btns"><button class="btn primary" data-act="doChatNew">Start new chat</button><button class="btn ghost" data-act="close">Keep this one</button></div>`;
@@ -3195,6 +3295,7 @@ document.addEventListener('input', e => {
   if(el.id === 'add-url' && S.add) S.add.url = el.value;
   if(el.id === 'import-code' && S.add) S.add.code = el.value;
   if(el.id === 'chat-input' && S.chat) S.chat.input = el.value;
+  if(el.id === 'nj-title'){ const e = document.getElementById('nj-err'); if(e) e.textContent = ''; }
   if(el.id === 'rv-input' && S.draft && S.draft.ai) S.draft.ai.input = el.value;
   if(el.closest && el.closest('.tt') && S.ttId !== undefined){ const pv = document.getElementById('tt-preview'); if(pv) pv.innerHTML = ttPreview(S.ttId); }
   if(el.id === 'add-own' && S.add) S.add.own = el.checked;
@@ -3260,7 +3361,16 @@ document.addEventListener('click', e => {
     case 'unoven': saveTask(id, {inOvenAt:null, midDone:false}); break;
     case 'out': saveTask(id, {done:true, outAt:now(), doneAt:now(), doneBy:S.key}); break;
     case 'mid': saveTask(id, {midDone:true}); break;
-    case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key, claimedAt:Date.now()}); toast(effRole() === 'h' ? 'It\'s yours. The steps are under "Your jobs".' : 'Marked as yours. Helpers can see you\'re doing it.'); break; }
+    case 'ask': openModal('ask', id); break;
+    case 'askPerson': openModal('askPerson', v); break;
+    case 'newJob': openModal('newJob', v || ''); break;
+    case 'njQuick': { const el = document.getElementById('nj-due'), d = Math.max(Number(v) || 30, Number((document.getElementById('nj-dur')||{}).value) || 0); if(el) el.value = hm(Math.ceil((now() + d*60000) / 300000) * 300000); break; }
+    case 'saveNewJob': saveNewJob(); break;
+    case 'doAsk': { const t = findTask(plan, id); if(!t) break; const a = prog(id).assignee; if(a){ toast(`${personName(a)} already has that one.`); closeModal(); break; } saveTask(id, {offer:{to:v, by:S.key, at:Date.now()}, declined:null}); closeModal(); toast(`Asked ${personName(v)}. It's theirs once they accept.`); break; }
+    case 'cancelOffer': saveTask(id, {offer:null}); toast('Request cancelled.'); break;
+    case 'acceptOffer': { const o = offerOf(findTask(plan, id) || {id}); if(!o || o.to !== S.key){ toast('That request was withdrawn or someone else took it.'); render(); break; } saveTask(id, {assignee:S.key, claimedAt:Date.now(), offer:null}); toast('It\'s yours. The steps are under "Your jobs".'); break; }
+    case 'declineOffer': { const by = (prog(id).offer||{}).by; saveTask(id, {offer:null, declined:{by:S.key, at:Date.now()}}); toast(`No problem. ${by ? personName(by) : 'The host'} will see you said no.`); break; }
+    case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key, claimedAt:Date.now(), offer:null}); toast(effRole() === 'h' ? 'It\'s yours. The steps are under "Your jobs".' : 'Marked as yours. Helpers can see you\'re doing it.'); break; }
     case 'release': saveTask(id, {assignee:null, claimedAt:null}); if(effRole() !== 'h') toast('Back on the open helper list.'); break;
     case 'toMM': { const p = clone(plan), t = findTask(p, id); if(!t) break; makeHostTask(p, t); savePlan(p); if(prog(id).assignee) saveTask(id, {assignee:null}); toast(ownerOf(t.r) && ownerOf(t.r) !== S.key ? `Now ${personName(ownerOf(t.r))}'s task (it's their dish).` : 'Now a host-only task.'); break; }
     case 'toHelper': { const p = clone(plan), t0 = findTask(plan, id), t = findTask(p, id); if(!t) break; const hadTools = !t.wasHelper && Object.values(t.uses||{}).some(q => q > 0); makeHelperJob(p, t); savePlan(p); if(prog(id).startedAt) saveTask(id, {startedAt:null}); toast(hadTools ? 'Now a helper job. Helpers can claim it. Pots and burners for helper jobs aren\'t tracked, so keep an eye on the stove.' : 'Now a helper job. Helpers can claim it.'); break; }
@@ -3497,7 +3607,10 @@ function announceRemote(prev, next){
     const t = findTask(S.plan, id); if(!t) continue;
     const who = personName(n.by), title = '"' + t.title + '"';
     if(n.done && !o.done) msgs.push(`${who} finished ${title}`);
-    else if(n.assignee && n.assignee !== o.assignee) msgs.push(n.assignee === S.key ? `${who} gave you ${title}` : `${personName(n.assignee)} claimed ${title}`);
+    else if(n.offer && n.offer.to === S.key && (!o.offer || o.offer.at !== n.offer.at)) msgs.push(`${personName(n.offer.by)} asked you to do ${title}`);
+    else if(n.assignee && n.assignee !== o.assignee) msgs.push(o.offer && o.offer.to === n.assignee ? `${personName(n.assignee)} accepted ${title}` : n.assignee === S.key ? `${who} gave you ${title}` : `${personName(n.assignee)} claimed ${title}`);
+    else if(n.declined && (!o.declined || o.declined.at !== n.declined.at)) msgs.push(`${personName(n.declined.by)} said no to ${title}`);
+    else if(o.offer && o.offer.to === S.key && !n.offer && !n.assignee) msgs.push(`The request for ${title} was cancelled`);
     else if(!n.assignee && o.assignee && !n.done) msgs.push(`${title} is open again`);
     else if(n.inOvenAt && !o.inOvenAt) msgs.push(`${who} put ${title} in the oven`);
     else if(n.startedAt && !o.startedAt) msgs.push(`${who} started ${title}`);
