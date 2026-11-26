@@ -644,6 +644,14 @@ body.has-nav .review{padding-bottom:230px}
 .fin[open] summary{margin-bottom:10px}
 .fin summary .sub{margin-left:auto}
 .rv-bar .btn{white-space:nowrap}
+/* ---- v23: live status ---- */
+.livechip{margin-right:auto;display:inline-flex;align-items:center;gap:7px;font-size:.82rem;font-weight:600;color:var(--ink);background:rgba(255,255,255,.55);padding:5px 11px 5px 9px;border-radius:999px}
+.livechip i{width:9px;height:9px;border-radius:50%;background:#2E9E5B;box-shadow:0 0 0 0 rgba(46,158,91,.5);animation:livepulse 2.4s ease-out infinite}
+.livechip.reconnecting i{background:#E0A100;animation:none}
+.livechip.offline i{background:#8A7B75;animation:none}
+.livechip.offline,.livechip.reconnecting{color:var(--orange-ink)}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(46,158,91,.45)}70%{box-shadow:0 0 0 7px rgba(46,158,91,0)}100%{box-shadow:0 0 0 0 rgba(46,158,91,0)}}
+@media (prefers-reduced-motion:reduce){ .livechip i{animation:none} }
 </style>
 </head>
 <body>
@@ -995,7 +1003,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v22 · Nov 25';
+const APP_VERSION = 'v23 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1028,6 +1036,11 @@ function fsAdapter(F, fdb){
     collection: path => ({
       onSnapshot: (next, err) => F.onSnapshot(F.collection(fdb, path), q => next({docs: q.docs.map(wrap), size: q.size, empty: q.empty, metadata: q.metadata}), err)
     })
+,
+    // Drop and re-open the live connection, which makes every listener catch up right away
+    kick: async () => { if(F.disableNetwork && F.enableNetwork){ await F.disableNetwork(fdb); await F.enableNetwork(fdb); } },
+    // Read one doc straight from the server, skipping the local cache
+    serverGet: async path => wrap(await (F.getDocFromServer || F.getDoc)(F.doc(fdb, path)))
   };
 }
 async function setupGemini(app){
@@ -1301,10 +1314,11 @@ async function drain(path){
   const q = queues[path]; q.busy = true;
   while(q.next){
     const data = q.next; q.next = null;
-    try{ await db.doc(path).set(data); }
+    try{ await db.doc(path).set(data); if(path !== 'meta/rev') bumpRev(); }
     catch(e){
       const code = e && e.code;
-      if(code === 'invalid_argument' || code === 'permission-denied'){ S.conn = 'readonly'; render(); }
+      if(path === 'meta/rev'){ if(code === 'permission-denied') LIVE.off = true; }
+      else if(code === 'invalid_argument' || code === 'permission-denied'){ S.conn = 'readonly'; render(); }
       else if(code === 'unavailable'){ await new Promise(r => setTimeout(r, 600 + Math.random()*900)); try{ await db.doc(path).set(data); }catch(e2){ toast('That change didn\'t save. Check your connection and try again.'); } }
       else if(code === 'quota_exceeded'){ toast('The shared plan is full and couldn\'t save that change.'); }
       else toast('That change didn\'t save. Try again.');
@@ -1423,6 +1437,7 @@ function banner(){
 function nowText(){ return S.pretend ? 'Pretend time ' + fmtDT(now()) : 'Now ' + fmtTime(now()); }
 function header(){
   return `<header class="top"><div class="bar">
+    ${liveChip()}
     <button class="iconbtn" data-act="switch" aria-label="Switch user" title="Switch user">${IC.swap}</button>
     <button class="iconbtn" data-act="menu" aria-haspopup="dialog" aria-label="Open menu" title="Menu">${IC.menu}</button>
   </div></header>`;
@@ -3205,7 +3220,8 @@ async function boot(){
       try{
         const [A, F] = window.__testFirebase || await Promise.all([import(FB_SDK + 'firebase-app.js'), import(FB_SDK + 'firebase-firestore.js')]);
         const app = A.initializeApp(FIREBASE_CONFIG);
-        d = fsAdapter(F, F.getFirestore(app));
+        let fdb; try{ fdb = F.initializeFirestore ? F.initializeFirestore(app, {experimentalAutoDetectLongPolling: true}) : F.getFirestore(app); }catch(e){ fdb = F.getFirestore(app); }
+        d = fsAdapter(F, fdb);
         setupGemini(app);
       }catch(e){ d = null; }
     }
@@ -3218,18 +3234,86 @@ async function boot(){
   let gotTasks = false, gotPlan = false;
   const loaded = () => { if(gotTasks && gotPlan && !S.ready){ S.ready = true; afterIdentity(); } };
   const loadTimer = setTimeout(() => { if(!S.ready){ S.ready = true; afterIdentity(); } if(S.conn === 'loading'){ S.conn = 'stale'; } render(); }, 10000);
-  db.doc('plan/current').onSnapshot(snap => {
-    if(snap.exists && validPlan((snap.data()||{}).plan)){ S.plan = snap.data().plan; if(!snap.metadata.fromCache) applyUpgrade(); }
-    if(!snap.metadata.fromCache) gotPlan = true;
-    loaded(); render();
-  }, () => { gotPlan = true; loaded(); render(); });
-  db.collection('tasks').onSnapshot(snap => {
-    const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.tasks = m;
+  const onTasks = snap => {
+    const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); });
+    if(S.ready && gotTasks) announceRemote(S.tasks, m);
+    S.tasks = m;
     if(!snap.metadata.fromCache){ gotTasks = true; clearTimeout(loadTimer); if(S.conn === 'loading' || S.conn === 'stale') S.conn = 'live'; }
     loaded(); render();
-  }, () => { clearTimeout(loadTimer); S.conn = 'stale'; gotTasks = true; loaded(); render(); });
-  db.collection('submissions').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.subs = m; render(); }, () => {});
-  db.collection('people').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.people = m; render(); }, () => {});
+  };
+  listen('plan', () => db.doc('plan/current').onSnapshot(snap => {
+    if(snap.exists && validPlan((snap.data()||{}).plan)){ S.plan = snap.data().plan; if(!snap.metadata.fromCache) applyUpgrade(); }
+    if(!snap.metadata.fromCache){ gotPlan = true; heard(); }
+    loaded(); render();
+  }, e => { gotPlan = true; loaded(); listenFailed('plan', e); }));
+  listen('tasks', () => db.collection('tasks').onSnapshot(snap => { onTasks(snap); if(!snap.metadata.fromCache) heard(); }, e => { clearTimeout(loadTimer); gotTasks = true; loaded(); listenFailed('tasks', e); }));
+  listen('subs', () => db.collection('submissions').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.subs = m; heard(); render(); }, e => listenFailed('subs', e)));
+  listen('people', () => db.collection('people').onSnapshot(snap => { const m = {}; snap.docs.forEach(x => { if(x.exists) m[x.id] = x.data(); }); S.people = m; heard(); render(); }, e => listenFailed('people', e)));
+  listen('rev', () => db.doc('meta/rev').onSnapshot(snap => { S.revSeen = snap.exists ? ((snap.data()||{}).at || 0) : 0; if(!snap.metadata || !snap.metadata.fromCache) heard(); }, e => listenFailed('rev', e)));
+  startWatchdog();
+}
+
+/* ============ LIVE UPDATES ============
+   Firestore pushes every change to everyone straight away. Phones that sleep or switch apps can come back with a dead
+   connection, so: listeners restart themselves after an error, every write also stamps meta/rev, and a cheap check
+   compares the server's stamp with the last one this device heard. If they don't match, the connection is reopened. */
+const LIVE = {unsubs:{}, makers:{}, tries:{}, miss:0, checking:false, revTimer:0, lastCheck:0};
+function listen(name, make){ LIVE.makers[name] = make; try{ const u = make(); LIVE.unsubs[name] = typeof u === 'function' ? u : null; }catch(e){ listenFailed(name, e); } }
+function listenFailed(name, e){
+  if(e && e.code === 'permission-denied'){ if(name === 'rev'){ LIVE.off = true; return; } S.conn = 'readonly'; render(); return; }
+  setLive('reconnecting');
+  const n = LIVE.tries[name] = (LIVE.tries[name] || 0) + 1;
+  setTimeout(() => { try{ LIVE.unsubs[name] && LIVE.unsubs[name](); }catch(_){} listen(name, LIVE.makers[name]); }, Math.min(30000, 1000 * 2 ** Math.min(n, 5)));
+}
+function heard(){ LIVE.tries = {}; if(S.conn === 'stale') S.conn = 'live'; setLive('live'); }
+function setLive(st){
+  if(S.live === st) return; S.live = st;
+  document.querySelectorAll('.livechip').forEach(el => { el.outerHTML = liveChip(); });
+}
+function liveChip(){
+  if(!db || S.conn === 'local') return '';
+  const st = S.live || 'live';
+  const label = st === 'live' ? 'Live' : st === 'offline' ? 'Offline' : 'Reconnecting…';
+  const tip = st === 'live' ? 'Changes from everyone show up here as they happen' : st === 'offline' ? 'No internet. Your changes will send when you\'re back online' : 'Catching up with everyone else\'s changes';
+  return `<span class="livechip ${st}" role="status" title="${tip}"><i aria-hidden="true"></i>${label}</span>`;
+}
+function bumpRev(){ if(LIVE.off) return; clearTimeout(LIVE.revTimer); LIVE.revTimer = setTimeout(() => { persist('meta/rev', {at: Date.now(), by: S.key || null}); }, 400); }
+async function liveCheck(reason){
+  if(!db || !db.serverGet || document.hidden || LIVE.checking || LIVE.off) return;
+  if(navigator.onLine === false){ setLive('offline'); return; }
+  LIVE.checking = true; LIVE.lastCheck = Date.now();
+  try{
+    const r = await db.serverGet('meta/rev'), at = r.exists ? ((r.data()||{}).at || 0) : 0;
+    if(at === (S.revSeen || 0)){ LIVE.miss = 0; setLive('live'); }
+    else if(reason === 'back' || ++LIVE.miss >= 2){ LIVE.miss = 0; setLive('reconnecting'); if(db.kick) await db.kick(); setTimeout(() => liveCheck('after'), 3000); }
+    else setTimeout(() => liveCheck('again'), 4000);
+  }catch(e){ if(e && e.code === 'permission-denied'){ LIVE.off = true; setLive('live'); } else setLive(navigator.onLine === false ? 'offline' : 'reconnecting'); }
+  finally{ LIVE.checking = false; }
+}
+function startWatchdog(){
+  setInterval(() => liveCheck('timer'), 20000);
+  const back = () => { if(!document.hidden && Date.now() - LIVE.lastCheck > 2000) liveCheck('back'); };
+  document.addEventListener('visibilitychange', back);
+  window.addEventListener('focus', back);
+  window.addEventListener('pageshow', back);
+  window.addEventListener('online', () => { setLive('reconnecting'); if(db && db.kick) db.kick().catch(() => {}); setTimeout(() => liveCheck('after'), 2500); });
+  window.addEventListener('offline', () => setLive('offline'));
+}
+/* Tell people when someone else claims, finishes or starts something */
+function announceRemote(prev, next){
+  const msgs = [];
+  for(const [id, n] of Object.entries(next)){
+    const o = prev[id] || {};
+    if(!n || n.by === S.key || !n.by) continue;
+    const t = findTask(S.plan, id); if(!t) continue;
+    const who = personName(n.by), title = '"' + t.title + '"';
+    if(n.done && !o.done) msgs.push(`${who} finished ${title}`);
+    else if(n.assignee && n.assignee !== o.assignee) msgs.push(n.assignee === S.key ? `${who} gave you ${title}` : `${personName(n.assignee)} claimed ${title}`);
+    else if(!n.assignee && o.assignee && !n.done) msgs.push(`${title} is open again`);
+    else if(n.inOvenAt && !o.inOvenAt) msgs.push(`${who} put ${title} in the oven`);
+    else if(n.startedAt && !o.startedAt) msgs.push(`${who} started ${title}`);
+  }
+  if(msgs.length) toast(msgs.length === 1 ? msgs[0] : `${msgs[0]}, plus ${msgs.length - 1} more update${msgs.length > 2 ? 's' : ''}`);
 }
 function afterIdentity(){
   S.baseKey = S.baseKey || S.key;
