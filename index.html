@@ -697,6 +697,17 @@ body.has-nav .review{padding-bottom:230px}
 .fgrid.tt{grid-template-columns:repeat(2,minmax(0,1fr))}
 .fgrid.tt .wide{grid-column:1 / -1}
 .fgrid.tt select,.fgrid.tt input[type=time]{min-width:0;width:100%}
+/* ---- v29: suggested starts ---- */
+.time.go{color:var(--good)}
+.tmeta .time + .sub{font-size:.85rem}
+.startbadge{display:flex;align-items:center;gap:6px;font-size:.92rem;color:var(--ink);margin:4px 0 2px}
+.startbadge svg{width:16px;height:16px;flex:0 0 16px}
+.startbadge span{color:var(--muted)}
+.startbadge.go{color:var(--good)}
+.startbadge.go b{color:var(--good)}
+.startbadge.go{background:var(--good-soft);border-radius:12px;padding:8px 12px;font-size:1rem;width:fit-content;max-width:100%}
+.startbadge.go svg{width:18px;height:18px;flex-basis:18px}
+.startbadge.go span{color:var(--good);opacity:.85}
 </style>
 </head>
 <body>
@@ -1048,7 +1059,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v28 · Nov 26';
+const APP_VERSION = 'v29 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1201,8 +1212,47 @@ function fromOf(plan, t){
   const f = t.from ? at(...t.from) : at(t.day, t.t);
   return Math.min(f, dueOf(plan, t) - (t.dur||5)*60000);
 }
-function listTime(plan, t){ return t.who === 'h' ? dueOf(plan, t) - 1 : sched(plan, t, true); }
-function displayTime(plan, t){ return t.who === 'h' ? Math.min(at(t.day, t.t), dueOf(plan, t) - (t.dur||5)*60000) : sched(plan, t, true); }
+/* ============ HELPER QUEUE ============
+   Prep jobs should get done as early as they sensibly can, not left until just before their deadline.
+   This plays the open helper jobs forward from now across the helpers who've joined: whenever a helper frees up,
+   they take the job with the nearest deadline among the ones allowed to start (its "can start" time has come).
+   Every open job gets a suggested start: "Start now" for the first few, a time for the rest. */
+let HQ = null;
+function helperQueue(plan){
+  const nowMs = now(), sig = Math.floor(nowMs / 30000) + '|' + JSON.stringify(S.tasks).length + '|' + Object.keys(S.people).length;
+  if(HQ && HQ.plan === plan && HQ.sig === sig) return HQ.map;
+  const M = 60000, hj = plan.tasks.filter(t => t.who === 'h' && !isDone(t));
+  const helpers = Object.values(S.people).filter(p => roleOf(p) === 'h').length;
+  const slots = Array(Math.max(2, helpers)).fill(nowMs), map = {};
+  // Jobs a helper has claimed keep that helper busy until they're likely done
+  for(const t of hj.filter(t => prog(t.id).assignee)){
+    const a = prog(t.id).assignee, p = S.people[a];
+    if(p && roleOf(p) === 'h' && fromOf(plan, t) <= nowMs){ slots.sort((x,y) => x-y); slots[0] = Math.max(slots[0], (prog(t.id).claimedAt || nowMs) + (t.dur||5)*M); }
+  }
+  let pool = hj.filter(t => !prog(t.id).assignee);
+  while(pool.length){
+    slots.sort((x,y) => x-y);
+    const tNow = slots[0], ready = pool.filter(t => fromOf(plan, t) <= tNow);
+    if(!ready.length){ slots[0] = Math.min(...pool.map(t => fromOf(plan, t))); continue; }
+    const pick = ready.reduce((a,b) => dueOf(plan,a) <= dueOf(plan,b) ? a : b);
+    const end = tNow + (pick.dur||5)*M;
+    map[pick.id] = {start: tNow, end, tight: end > dueOf(plan, pick)};
+    slots[0] = end; pool = pool.filter(t => t !== pick);
+  }
+  HQ = {plan, sig, map};
+  return map;
+}
+const startsNow = ms => ms <= now() + 2*60000;
+// Sort by the time each row shows; at the same time, the nearer deadline first
+const byListTime = plan => (a,b) => listTime(plan,a) - listTime(plan,b) || (a.who==='h' ? dueOf(plan,a) : sched(plan,a,true)) - (b.who==='h' ? dueOf(plan,b) : sched(plan,b,true));
+/* Where a step sits in every list, and the time it shows: start time for cook steps; for open helper jobs, their
+   suggested start; for helper jobs that are claimed or done, their deadline */
+function listTime(plan, t){
+  if(t.who !== 'h') return sched(plan, t, true);
+  const q = !isDone(t) && !prog(t.id).assignee ? helperQueue(plan)[t.id] : null;
+  return q ? q.start : dueOf(plan, t) - 1;
+}
+function displayTime(plan, t){ return listTime(plan, t); }
 function dueLabel(plan, t){ const d = dueOf(plan, t); return 'by ' + (dayOf(d) !== t.day ? fmtDT(d) : fmtTime(d)); }
 const isDone = t => !!prog(t.id).done;
 const inOven = t => { const s = prog(t.id); return !!(t.oven && s.inOvenAt && !s.done); };
@@ -1418,6 +1468,14 @@ function detail(t){
   if(t.notes && t.notes.length) parts.push(`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`);
   return `<div class="detail">${parts.join('')}</div>`;
 }
+/* Time shown on a helper job: open ones lead with when to start; claimed or done ones show their deadline */
+function helperTime(plan, t, viewDay){
+  const due = dueOf(plan, t), dueTxt = (viewDay && dayOf(due) === viewDay) || dayOf(due) === dayOf(now()) ? fmtTime(due) : fmtDT(due);
+  const q = !isDone(t) && !prog(t.id).assignee ? helperQueue(plan)[t.id] : null;
+  if(!q) return `<span class="time">${esc('by ' + dueTxt)}</span>`;
+  const st = startsNow(q.start) ? 'Start now' : 'Start ' + (dayOf(q.start) === dayOf(now()) || dayOf(q.start) === viewDay ? fmtTime(q.start) : fmtDT(q.start));
+  return `<span class="time${startsNow(q.start) ? ' go' : ''}">${esc(st)}</span><span class="sub">due ${esc(dueTxt)}</span>`;
+}
 /* Who has a helper job: shown right under its title so it's obvious at a glance */
 function claimBar(t, s, done){
   const a = s.assignee, av = k => `<span class="avatar xs" style="background:${colorFor(k)}" aria-hidden="true">${esc((personName(k)||'?').slice(0,1).toUpperCase())}</span>`;
@@ -1442,6 +1500,8 @@ function taskRow(t, opts={}){
   if(!done && !io && !stt && t.who==='mm' && lateMin > 10) chips.push(`<span class="chip late">${dur(lateMin)} late</span>`);
   const lateDue = t.who==='h' ? mins(now() - dueOf(plan,t)) : 0;
   if(!done && t.who==='h' && lateDue > 0) chips.push(`<span class="chip late">${dur(lateDue)} past its deadline</span>`);
+  const hq = t.who==='h' && !done && !s.assignee && lateDue <= 0 ? helperQueue(plan)[t.id] : null;
+  if(hq && hq.tight) chips.push('<span class="chip late">Tight on time</span>');
   if(stt) chips.push(`<span class="chip ovenchip">Started ${fmtTime(s.startedAt)}</span>`);
   if(io) chips.push(`<span class="chip ovenchip">In oven since ${fmtTime(s.inOvenAt)}</span>`);
   if(done && t.who !== 'h' && s.doneBy && s.doneBy !== S.key && S.people[s.doneBy]) chips.push(`<span class="chip">Done by ${esc(personName(s.doneBy))}</span>`);
@@ -1474,7 +1534,7 @@ function taskRow(t, opts={}){
   return `<div class="task${done?' done':''}${t.who==='h' && s.assignee && !done ? ' claimed' : ''}"${t.who==='h' && s.assignee && !done ? ` style="--pc:${colorFor(s.assignee)}"` : ''}>
     <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
     <div class="tmain">
-      <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(opts.viewDay && dayOf(dueOf(plan,t)) === opts.viewDay ? 'by ' + fmtTime(dueOf(plan,t)) : dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay && !(t.who==='h' && dayOf(dueOf(plan,t)) !== t.day) ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
+      <div class="trow"><div class="tmeta">${t.who==='h' ? helperTime(plan, t, opts.viewDay) : `<span class="time">${fmtTime(sc)}</span>`}${opts.withDay && t.who !== 'h' ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
       ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>`}
       ${t.who === 'h' ? claimBar(t, s, done) : ''}
       ${opts.forceOpen ? '' : viLink(t.id, open, opts.open)}
@@ -1545,7 +1605,7 @@ function renderRecipes(){
   if(!order.length) return `<div class="wrap">${top}<section class="card"><h2>No recipes yet</h2><button class="btn primary" data-act="go" data-v="addDish">Add a dish</button></section></div>`;
   const cur = order.includes(S.recipeTab) ? S.recipeTab : order[0];
   const r = plan.recipes[cur];
-  const tasks = plan.tasks.filter(t => t.r === cur).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  const tasks = plan.tasks.filter(t => t.r === cur).sort(byListTime(plan));
   const p = progress(t => t.r === cur);
   const sub = `<nav class="subtabs" aria-label="Recipes">${order.map(k=>`<button class="subtab" data-act="recipeTab" data-v="${k}" ${k===cur?'aria-current="page"':''}><span class="tile" aria-hidden="true">${esc((plan.recipes[k].short||'?').slice(0,1).toUpperCase())}</span><span class="lbl">${esc(plan.recipes[k].short)}</span></button>`).join('')}</nav>`;
   const ovenSteps = tasks.filter(t => t.oven);
@@ -1606,7 +1666,7 @@ function renderHelpersAdmin(){
   const roster = people.map(([k,p]) => ({k, p, act: activeOf(k), done: doneOf(k)}))
     .sort((a,b) => (b.act.length > 0) - (a.act.length > 0) || (a.p.joinedAt||0) - (b.p.joinedAt||0));
   const mine = activeOf(S.key).filter(t => t.who === 'h');
-  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee).sort((a,b) => dueOf(plan,a) - dueOf(plan,b));
+  const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee).sort((a,b) => listTime(plan,a) - listTime(plan,b) || dueOf(plan,a) - dueOf(plan,b));
   const finished = hj.filter(isDone).sort((a,b) => (prog(b.id).doneAt||0) - (prog(a.id).doneAt||0));
   const working = roster.filter(x => x.act.length).length;
   const jobLi = t => `<li class="pj${dueOf(plan,t) < nowMs ? ' late' : ''}"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}${t.who === 'h' ? dueTxt(t) + (prog(t.id).claimedAt ? ' · claimed ' + esc(fmtTime(prog(t.id).claimedAt)) : '') : inOven(t) ? 'In the oven' : 'Started ' + esc(fmtTime(prog(t.id).startedAt))}</div></div>${t.who === 'h' ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}</li>`;
@@ -1631,6 +1691,7 @@ function renderHelpersAdmin(){
       return `<div class="task nocheck"><div class="tmain">
         <div class="trow"><div class="tmeta">${chipR(t)}<span class="chip">about ${t.dur} min</span></div></div>
         <div class="ttitle">${esc(t.title)}</div>
+        ${startBadge(plan, t)}
         ${viLink(t.id, o)}
         ${neededBy(dueOf(plan,t), false)}
         ${o ? detail(t) : ''}
@@ -1748,7 +1809,7 @@ function renderEditRecipe(){
   const d = S.draft, plan = d.plan, k = d.recipeId, isGen = k === 'general', mode = d.mode || 'edit';
   const r = isGen ? {short:'Kitchen jobs', name:'Kitchen jobs'} : plan.recipes[k];
   if(!r) return renderRecipesAdmin();
-  const tasks = plan.tasks.filter(t => t.r === k).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  const tasks = plan.tasks.filter(t => t.r === k).sort(byListTime(plan));
   const canAI = !S.noAI && !isGen;
   const stepsCard = `<section class="card"><div class="card-h"><h2>Plan steps</h2><div class="btns">${canAI ? `<button class="btn small primary" data-act="aiUpdate">Update steps with the Assistant</button>` : ''}<button class="btn small" data-act="addTask">Add a plan step</button></div></div>
       ${canAI ? '<p class="sub" style="margin:0">Changed the ingredients or method? "Update steps with the Assistant" updates this dish\'s steps, helper jobs and oven times to match and fits them around everything else. You\'ll see every change and approve it before anything is saved.</p>' : ''}
@@ -1907,6 +1968,12 @@ function renderSchedule(){
 }
 
 /* ============ HELPER VIEW ============ */
+function startBadge(plan, t){
+  const q = helperQueue(plan)[t.id]; if(!q) return '';
+  if(startsNow(q.start)) return `<div class="startbadge go">${I_CLOCK}<b>Start now</b>${q.tight ? '<span> · it\'s getting tight</span>' : ''}</div>`;
+  if(fromOf(plan, t) <= now()) return `<div class="startbadge">${I_CLOCK}<b>Ready now</b><span> · suggested start ${esc(fmtTime(q.start))}</span></div>`;
+  return '';
+}
 function jobCard(t, mode){
   const plan = S.plan, s = prog(t.id), due = dueOf(plan,t), from = fromOf(plan,t), nowMs = now();
   const open = mode === 'mine' ? !S.collapsed.has(t.id) : S.expanded.has(t.id);
@@ -1918,6 +1985,7 @@ function jobCard(t, mode){
   return `<div class="job${mode==='mine'?' mine':''}${mode==='done'?' done':''}">
     <div class="trow"><div class="tmeta"><span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span><span class="chip">about ${t.dur} min</span></div></div>
     <h3>${esc(t.title)}</h3>
+    ${mode==='open' ? startBadge(plan, t) : ''}
     ${mode==='done' ? '' : viLink(t.id, open, mode==='mine')}
     ${mode==='done' ? `<div class="sub">Done ${s.doneAt ? esc(fmtRel(s.doneAt)) : ''}</div>` : neededBy(due, false)}
     ${startNote}
@@ -1932,7 +2000,7 @@ function renderHelper(){
   const doing = mine.filter(t => !isDone(t)).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const did = hj.filter(t => isDone(t) && (prog(t.id).assignee === me || prog(t.id).doneBy === me));
   const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee);
-  const ready = open.filter(t => fromOf(plan,t) <= nowMs + 30*60000).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
+  const ready = open.filter(t => fromOf(plan,t) <= nowMs + 30*60000).sort((a,b)=>listTime(plan,a)-listTime(plan,b) || dueOf(plan,a)-dueOf(plan,b));
   const later = open.filter(t => fromOf(plan,t) > nowMs + 30*60000).sort((a,b)=>fromOf(plan,a)-fromOf(plan,b));
   const taken = hj.filter(t => !isDone(t) && prog(t.id).assignee && prog(t.id).assignee !== me).sort((a,b)=>dueOf(plan,a)-dueOf(plan,b));
   const who = k => { const p = S.people[k]; return esc(personName(k)) + (p && roleOf(p) === 'host' ? ' (host)' : ''); };
@@ -2010,12 +2078,13 @@ function planCard(tasks, title){
   // Leftovers from Wednesday: what matters is when they're due, not when they could have been done.
   // Ones whose time has already passed (Wednesday cook steps, helper jobs due Wednesday) are behind and go first;
   // helper jobs that just weren't done early slot into today's list at their deadline.
-  const later = t => t.who === 'h' && dayOf(dueOf(plan, t)) !== day;
-  const carry = carriedOver(tasks, day);
-  const behind = carry.filter(t => listTime(plan,t) < at(day,'00:00')).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
-  const dayTasks = tasks.filter(t => t.day === day).concat(carry.filter(t => !behind.includes(t))).sort((a,b)=>listTime(plan,a)-listTime(plan,b));
+  // Helper jobs sit on the day of the time they show (open ones: their suggested start), so prep that could have
+  // been done earlier comes up as "Start now" instead of waiting by its deadline. Unfinished Wednesday cook steps are behind.
+  const onDay = t => t.who === 'h' ? dayOf(listTime(plan, t)) === day : t.day === day;
+  const behind = carriedOver(tasks, day).filter(t => t.who !== 'h').sort(byListTime(plan));
+  const dayTasks = tasks.filter(onDay).sort(byListTime(plan));
   const hr = t => new Date(listTime(plan,t)).getHours();
-  const groups = [['Morning', t=>!later(t)&&hr(t)<12], ['Afternoon', t=>!later(t)&&hr(t)>=12&&hr(t)<17], ['Evening', t=>!later(t)&&hr(t)>=17], [day === 'wed' ? 'Any time today, due Thursday' : 'Due later', later]];
+  const groups = [['Morning', t=>hr(t)<12], ['Afternoon', t=>hr(t)>=12&&hr(t)<17], ['Evening', t=>hr(t)>=17]];
   const mode = S.planMode || 'list';
   const carryHtml = behind.length ? `<div class="group-h carry-h">Behind from Wednesday <span class="sub">${behind.length} still to do</span></div><div class="tasks">${behind.map(t=>taskRow(t,{carry:true, withDay:true})).join('')}</div>` : '';
   const listHtml = carryHtml + (groups.map(([label,f]) => { const g = dayTasks.filter(f); return g.length ? `<div class="group-h">${label}</div><div class="tasks">${g.map(t=>taskRow(t, {viewDay: day})).join('')}</div>` : ''; }).join('') || '<p class="empty">Nothing planned this day.</p>');
@@ -2036,14 +2105,14 @@ function fmtShort(ms){ const d = new Date(ms), h = d.getHours(), m = d.getMinute
 function kindOf(t){ return t.oven ? 'oven' : (t.who !== 'h' && Object.values(t.uses||{}).some(q=>q>0)) ? 'stove' : 'prep'; }
 function gantt(tasks, day){
   const plan = S.plan, nowMs = now(), H = 3600000, M = 60000;
-  const startOf = t => { if(t.who === 'h'){ const d = displayTime(plan, t); return dayOf(d) === day ? d : at(day, t.t); } return sched(plan, t, true); };
   const lenOf = t => Math.max(1, t.who === 'h' ? (t.dur||5) : len(t)) * M;
-  const all = tasks.filter(t => t.day === day && !t.final);
-  const carry = carriedOver(tasks, day);
-  const carryIds = new Set(carry.filter(t => listTime(plan,t) < at(day,'00:00')).map(t => t.id));
-  const dueLater = new Set(carry.filter(t => !carryIds.has(t.id)).map(t => t.id));
+  // Open helper jobs sit at their suggested start; claimed or done ones end at their deadline
+  const startOf = t => t.who === 'h' ? (isDone(t) || prog(t.id).assignee ? dueOf(plan, t) - lenOf(t) : listTime(plan, t)) : sched(plan, t, true);
+  const all = tasks.filter(t => !t.final && (t.who === 'h' ? dayOf(startOf(t)) === day : t.day === day));
+  const carry = carriedOver(tasks, day).filter(t => t.who !== 'h');
+  const carryIds = new Set(carry.map(t => t.id));
   const cStart = Math.min(Math.max(nowMs, at(day,'07:00')), at(day,'23:00'));
-  const pos = t => carryIds.has(t.id) ? cStart : dueLater.has(t.id) ? Math.max(at(day,'00:00'), dueOf(plan,t) - lenOf(t)) : startOf(t);
+  const pos = t => carryIds.has(t.id) ? cStart : startOf(t);
   const items = all.concat(carry);
   if(!items.length) return '<p class="empty">Nothing planned this day.</p>';
   // Time axis: busy stretches get the room; idle stretches (45+ min with nothing going on) shrink to a narrow "break" band
@@ -2070,7 +2139,7 @@ function gantt(tasks, day){
     if(inOven(t) || started(t)) return 'live';
     if(carryIds.has(t.id)) return 'carry';
     if(day === 'wed' && nowMs >= at('thu','00:00') && !t.final) return 'moved';
-    if(!t.optional && nowMs > pos(t) + 10*M) return 'late';
+    if(!t.optional && (t.who === 'h' ? nowMs > dueOf(plan, t) : nowMs > pos(t) + 10*M)) return 'late';
     return 'todo'; };
     // Group by dish, in the plan's dish order; kitchen chores last
   const order = [...(plan.recipeOrder||[]), ...Object.keys(plan.recipes).filter(r => !(plan.recipeOrder||[]).includes(r))];
@@ -2137,17 +2206,17 @@ function gantt(tasks, day){
 
 /* ============ HOST DASHBOARD ============ */
 /* Up next: never hides a step until it's checked off. Everything that should already have started (or is under way or in the oven) always shows, however many there are; then the next few after that. */
-function upNextKey(plan, t){ return t.who === 'h' ? dueOf(plan, t) - (t.dur||5)*60000 : sched(plan, t, true); }
+function upNextKey(plan, t){ return t.who === 'h' && (isDone(t) || prog(t.id).assignee) ? dueOf(plan, t) - (t.dur||5)*60000 : listTime(plan, t); }
 function upNextList(tasks, more){
   const plan = S.plan, nowMs = now(), key = t => upNextKey(plan, t);
   const open = tasks.filter(t => !isDone(t) && !t.final).sort((a,b) => key(a) - key(b));
-  const due = open.filter(t => inOven(t) || started(t) || key(t) <= nowMs);
-  return due.concat(open.filter(t => !due.includes(t)).slice(0, more)).sort((a,b) => listTime(plan,a) - listTime(plan,b));
+  const due = open.filter(t => inOven(t) || started(t) || key(t) <= nowMs + 2*60000);
+  return due.concat(open.filter(t => !due.includes(t)).slice(0, more)).sort(byListTime(plan));
 }
 function upNextCard(list, emptyText){
   const plan = S.plan, nowMs = now();
   const behind = list.filter(t => !inOven(t) && !started(t) && (t.who === 'h' ? dueOf(plan,t) : sched(plan,t,true) + 10*60000) < nowMs).length;
-  const nextUp = list.find(t => !inOven(t) && !started(t) && upNextKey(plan,t) > nowMs);
+  const nextUp = list.find(t => !inOven(t) && !started(t) && upNextKey(plan,t) > nowMs + 2*60000);
   const sub = behind ? `<span class="pill crit">${behind} behind</span>` : nextUp ? `<span class="sub">${esc(relTo(upNextKey(plan,nextUp)))}</span>` : '';
   if(!list.length && !emptyText) return '';
   return `<section class="card" aria-labelledby="nx-h"><div class="card-h"><h2 id="nx-h">Up next</h2>${sub}</div>
