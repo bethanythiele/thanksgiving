@@ -1096,7 +1096,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v32 · Nov 26';
+const APP_VERSION = 'v33 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -2180,6 +2180,9 @@ function newJobModalHtml(toKey){
       <label class="field">Takes about (min)<input id="nj-dur" type="number" min="1" max="240" value="15"></label>
       <label class="field">Needed by<input id="nj-due" type="time" value="${hm(round(nowMs + 30*60000))}"></label>
       <div class="field wide nj-quick"><span class="sub">Quick pick</span><div class="btns"><button class="btn small" data-act="njQuick" data-v="15">ASAP</button><button class="btn small" data-act="njQuick" data-v="30">In 30 min</button><button class="btn small" data-act="njQuick" data-v="60">In 1 hour</button></div></div>
+      <label class="field">Dish <span class="sub" style="font-weight:400">optional</span><select id="nj-r"><option value="">Not part of a dish</option>${S.plan.recipeOrder.filter(k => S.plan.recipes[k]).map(k => `<option value="${k}">${esc(S.plan.recipes[k].short || S.plan.recipes[k].name)}</option>`).join('')}</select></label>
+      <label class="field">For a step <span class="sub" style="font-weight:400">optional</span><select id="nj-for"><option value="">None</option>${S.plan.recipeOrder.filter(k => S.plan.recipes[k]).map(k => { const steps = S.plan.tasks.filter(t => t.r === k && t.who === 'mm' && !t.final && !isDone(t)).sort((a,b) => sched(S.plan,a,true) - sched(S.plan,b,true)); return steps.length ? `<optgroup label="${esc(S.plan.recipes[k].short || S.plan.recipes[k].name)}">${steps.map(t => `<option value="${t.id}">${esc(fmtTime(sched(S.plan,t,true)) + ' · ' + t.title)}</option>`).join('')}</optgroup>` : ''; }).join('')}</select></label>
+      <p class="sub wide" style="margin:-4px 0 0">Pick a step if this job gets something ready for it. It then shows in that step's "Prep for this step" box and moves if the step moves.</p>
       <label class="field wide">Who<select id="nj-to"><option value="">Anyone can claim it</option>${people.map(([k,p]) => `<option value="${esc(k)}" ${k === toKey ? 'selected' : ''}>Ask ${esc(p.name)} (${esc(busyText(k).toLowerCase())})</option>`).join('')}</select></label>
     </div>
     <p class="formerr" id="nj-err" role="alert"></p>
@@ -2192,8 +2195,11 @@ function saveNewJob(){
   const nowMs = now(), day = dayOf(nowMs), dur = clampInt(v('nj-dur'), 1, 240, 15);
   let dueT = validHM(v('nj-due')) || hm(nowMs + 30*60000);
   if(at(day, dueT) < nowMs + dur*60000) dueT = hm(Math.ceil((nowMs + dur*60000) / 300000) * 300000);
-  const t = {id: rid('j-'), r:'general', who:'h', day, t: hm(Math.floor(nowMs / 300000) * 300000), dur, title,
+  const forId = v('nj-for'), target = forId ? findTask(S.plan, forId) : null, rk = v('nj-r') || (target ? target.r : '');
+  const t = {id: rid('j-'), r: S.plan.recipes[rk] ? rk : 'general', who:'h', day, t: hm(Math.floor(nowMs / 300000) * 300000), dur, title,
     steps: v('nj-steps').split('\n').map(str).filter(Boolean), from:[day, hm(Math.floor(nowMs / 300000) * 300000)], due:[day, dueT], adhoc:true};
+  // Linked to a step: keep the time picked, but let it move with that step
+  if(target){ t.for = {id: target.id, before: Math.round((sched(S.plan, target, true) - at(day, dueT)) / 60000)}; delete t.due; }
   const p = clone(S.plan); p.tasks.push(t); savePlan(p);
   const to = v('nj-to');
   if(to){ saveTask(t.id, {offer:{to, by:S.key, at:Date.now()}}); toast(`Added. ${personName(to)} will see your request.`); }
