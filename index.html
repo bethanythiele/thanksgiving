@@ -652,6 +652,28 @@ body.has-nav .review{padding-bottom:230px}
 .livechip.offline,.livechip.reconnecting{color:var(--orange-ink)}
 @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(46,158,91,.45)}70%{box-shadow:0 0 0 7px rgba(46,158,91,0)}100%{box-shadow:0 0 0 0 rgba(46,158,91,0)}}
 @media (prefers-reduced-motion:reduce){ .livechip i{animation:none} }
+/* ---- v24: who's on a helper job ---- */
+.claimbar{display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 12px 5px 5px;border-radius:999px;font-size:.92rem;width:fit-content;max-width:100%;line-height:1.25}
+.claimbar b{font-weight:700}
+.claimbar.taken{background:color-mix(in srgb,var(--pc) 13%,white);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 50%,white);color:var(--ink)}
+.claimbar.mine{background:var(--good-soft);color:var(--good);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--good) 35%,white)}
+.claimbar.open{padding:5px 12px;border:1.5px dashed var(--orange);color:var(--orange-ink);background:var(--white)}
+.claimbar.open .cb-dot{width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.claimbar.open.urgent{border-style:solid;border-color:var(--crit);color:var(--crit);background:var(--crit-soft)}
+.claimbar.open.urgent .cb-dot{background:var(--crit)}
+.claimbar.donebar{padding:3px 10px 3px 6px;color:var(--muted);background:var(--bg)}
+.claimbar.donebar svg{width:16px;height:16px}
+.cb-when{color:var(--muted);font-size:.86em;white-space:nowrap}
+.avatar.xs{width:26px;height:26px;font-size:.78rem;flex:0 0 26px}
+.task.claimed{box-shadow:inset 4px 0 0 var(--pc);padding-left:10px;margin-left:-10px;border-radius:0}
+.task.claimed .check{border-color:color-mix(in srgb,var(--pc) 60%,var(--orange))}
+.claimbar{border-radius:16px;flex-wrap:wrap;row-gap:2px}
+.claimbar.taken > span:not(.avatar):not(.cb-when),.claimbar.mine > span:not(.avatar):not(.cb-when){white-space:nowrap}
+@media (max-width:719px){
+  .claimbar.taken,.claimbar.mine{display:grid;grid-template-columns:auto auto;column-gap:8px;row-gap:0;padding:6px 14px 6px 6px}
+  .claimbar.taken .avatar,.claimbar.mine .avatar{grid-row:1 / span 2;align-self:center}
+  .claimbar .cb-when{grid-column:2;line-height:1.2}
+}
 </style>
 </head>
 <body>
@@ -1003,7 +1025,7 @@ const FIREBASE_CONFIG = {
 };
 
 const FB_SDK = 'https://www.gstatic.com/firebasejs/12.12.1/';
-const APP_VERSION = 'v23 · Nov 26';
+const APP_VERSION = 'v24 · Nov 26';
 (function(){ // record what App Check pass the AI requests carry (for troubleshooting)
   const f0 = window.fetch;
   if(!f0) return;
@@ -1372,6 +1394,15 @@ function detail(t){
   if(t.notes && t.notes.length) parts.push(`<div class="note"><ul>${t.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`);
   return `<div class="detail">${parts.join('')}</div>`;
 }
+/* Who has a helper job: shown right under its title so it's obvious at a glance */
+function claimBar(t, s, done){
+  const a = s.assignee, av = k => `<span class="avatar xs" style="background:${colorFor(k)}" aria-hidden="true">${esc((personName(k)||'?').slice(0,1).toUpperCase())}</span>`;
+  if(done){ const by = s.doneBy || a; return `<div class="claimbar donebar">${I_CHECK}<span>Done${by ? ' by <b>' + (by === S.key ? 'you' : esc(personName(by))) + '</b>' : ''}${s.doneAt ? ' · ' + esc(fmtTime(s.doneAt)) : ''}</span></div>`; }
+  if(!a){ const left = dueOf(S.plan, t) - now(); return `<div class="claimbar open${left < 3600000 ? ' urgent' : ''}"><span class="cb-dot" aria-hidden="true"></span><span>${left < 0 ? 'Nobody claimed this, and it\'s late' : 'Open · nobody has claimed it'}</span></div>`; }
+  const when = s.claimedAt ? `<span class="cb-when">since ${esc(fmtTime(s.claimedAt))}</span>` : '';
+  if(a === S.key) return `<div class="claimbar mine" style="--pc:${colorFor(a)}">${av(a)}<span><b>You're</b> doing this</span>${when}</div>`;
+  return `<div class="claimbar taken" style="--pc:${colorFor(a)}">${av(a)}<span><b>${esc(personName(a))}</b> is doing this</span>${when}</div>`;
+}
 function taskRow(t, opts={}){
   const plan = S.plan, s = prog(t.id), done = !!s.done, io = inOven(t), stt = started(t);
   const open = opts.forceOpen ? true : opts.open ? !S.collapsed.has(t.id) : S.expanded.has(t.id);
@@ -1379,7 +1410,7 @@ function taskRow(t, opts={}){
   const chips = [];
   if(opts.carry) chips.push('<span class="chip late">From Wednesday</span>');
   if(opts.showRecipe !== false) chips.push(`<span class="chip" style="--h:${hueOf(plan,t.r)}">${esc(recipeOf(plan,t.r).short)}</span>`);
-  if(t.who==='h') chips.push(`<span class="chip helper${s.assignee===S.key && !done ? ' me' : ''}">${!s.assignee ? 'Helper job · open' : s.assignee === S.key ? (done ? 'Helper job · you' : 'Helper job · you\'re on it') : 'Helper job · ' + esc(personName(s.assignee))}</span>`);
+  if(t.who==='h') chips.push('<span class="chip helper">Helper job</span>');
   else if(ownerOf(t.r) && ownerOf(t.r) !== S.key) chips.push(`<span class="chip helper">${esc(personName(ownerOf(t.r)))}'s dish</span>`);
   if(t.oven) chips.push(`<span class="chip ovenchip">${t.oven.temp}°F · ${rangeDur(t.oven.min, t.oven.max)}</span>`);
   if(t.optional) chips.push('<span class="chip">Optional</span>');
@@ -1389,7 +1420,7 @@ function taskRow(t, opts={}){
   if(!done && t.who==='h' && lateDue > 0) chips.push(`<span class="chip late">${dur(lateDue)} past its deadline</span>`);
   if(stt) chips.push(`<span class="chip ovenchip">Started ${fmtTime(s.startedAt)}</span>`);
   if(io) chips.push(`<span class="chip ovenchip">In oven since ${fmtTime(s.inOvenAt)}</span>`);
-  if(done && s.doneBy && s.doneBy !== S.key && S.people[s.doneBy]) chips.push(`<span class="chip">Done by ${esc(personName(s.doneBy))}</span>`);
+  if(done && t.who !== 'h' && s.doneBy && s.doneBy !== S.key && S.people[s.doneBy]) chips.push(`<span class="chip">Done by ${esc(personName(s.doneBy))}</span>`);
   let actions = '';
   if(!done && !opts.readonly){
     if(t.oven){
@@ -1403,6 +1434,7 @@ function taskRow(t, opts={}){
   if(!done && !opts.readonly && t.who==='h'){
     if(!s.assignee) actions += `<button class="btn small" data-act="claim" data-id="${t.id}">I'm doing this</button>`;
     else if(s.assignee === S.key) actions += `<button class="btn small ghost" data-act="release" data-id="${t.id}">Give it back</button>`;
+    else if(isHost()) actions += `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign ${esc(personName(s.assignee))}</button>`;
   }
   if(!done && !opts.readonly && canEditTask(t) && !t.final) actions += `<button class="btn small ghost" data-act="taskTime" data-id="${t.id}">Change time</button>`;
   if(!done && !opts.readonly && canEditTask(t) && !t.final){
@@ -1415,11 +1447,13 @@ function taskRow(t, opts={}){
     timer = `<div class="sub tnum">${dur(el)} so far · check ${fmtTime(s.inOvenAt + t.oven.min*60000)}${t.oven.max!==t.oven.min?'–'+fmtTime(s.inOvenAt + t.oven.max*60000):''}</div>`;
   }
   const label = done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`;
-  return `<div class="task${done?' done':''}">
+  return `<div class="task${done?' done':''}${t.who==='h' && s.assignee && !done ? ' claimed' : ''}"${t.who==='h' && s.assignee && !done ? ` style="--pc:${colorFor(s.assignee)}"` : ''}>
     <button class="check${t.oven?' oven':''}${io?' inoven':''}" data-act="toggle" data-id="${t.id}" aria-pressed="${done}" aria-label="${esc(label)}">${io && !done ? I_FLAME : I_CHECK}</button>
     <div class="tmain">
       <div class="trow"><div class="tmeta"><span class="time">${t.who==='h' ? esc(dueLabel(plan,t)) : fmtTime(sc)}</span>${opts.withDay && !(t.who==='h' && dayOf(dueOf(plan,t)) !== t.day) ? `<span class="sub">${DAY_SHORT[t.day]}</span>` : ''}${chips.join('')}</div></div>
-      ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>` + viLink(t.id, open, opts.open)}
+      ${opts.forceOpen ? '' : `<div class="ttitle">${esc(t.title)}</div>`}
+      ${t.who === 'h' ? claimBar(t, s, done) : ''}
+      ${opts.forceOpen ? '' : viLink(t.id, open, opts.open)}
       ${timer}
       ${open ? detail(t) : ''}
       ${actions ? `<div class="btns">${actions}</div>` : ''}
@@ -1551,7 +1585,7 @@ function renderHelpersAdmin(){
   const open = hj.filter(t => !isDone(t) && !prog(t.id).assignee).sort((a,b) => dueOf(plan,a) - dueOf(plan,b));
   const finished = hj.filter(isDone).sort((a,b) => (prog(b.id).doneAt||0) - (prog(a.id).doneAt||0));
   const working = roster.filter(x => x.act.length).length;
-  const jobLi = t => `<li class="pj${dueOf(plan,t) < nowMs ? ' late' : ''}"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}${t.who === 'h' ? dueTxt(t) : inOven(t) ? 'In the oven' : 'Started ' + esc(fmtTime(prog(t.id).startedAt))}</div></div>${t.who === 'h' ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}</li>`;
+  const jobLi = t => `<li class="pj${dueOf(plan,t) < nowMs ? ' late' : ''}"><div class="pj-main"><b>${esc(t.title)}</b><div class="pj-meta">${chipR(t)}${t.who === 'h' ? dueTxt(t) + (prog(t.id).claimedAt ? ' · claimed ' + esc(fmtTime(prog(t.id).claimedAt)) : '') : inOven(t) ? 'In the oven' : 'Started ' + esc(fmtTime(prog(t.id).startedAt))}</div></div>${t.who === 'h' ? `<button class="btn small ghost" data-act="release" data-id="${t.id}">Unassign</button>` : ''}</li>`;
   const card = x => {
     const owns = dishesOf(x.k).filter(r => plan.recipes[r]).map(r => esc(plan.recipes[r].short));
     const role = owns.length ? 'Owns ' + owns.join(', ') : 'Helper';
@@ -3071,8 +3105,8 @@ document.addEventListener('click', e => {
     case 'unoven': saveTask(id, {inOvenAt:null, midDone:false}); break;
     case 'out': saveTask(id, {done:true, outAt:now(), doneAt:now(), doneBy:S.key}); break;
     case 'mid': saveTask(id, {midDone:true}); break;
-    case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key}); toast(effRole() === 'h' ? 'It\'s yours. The steps are under "Your jobs".' : 'Marked as yours. Helpers can see you\'re doing it.'); break; }
-    case 'release': saveTask(id, {assignee:null}); if(effRole() !== 'h') toast('Back on the open helper list.'); break;
+    case 'claim': { const a = prog(id).assignee; if(a && a !== S.key){ toast(`${personName(a)} already took that one.`); break; } saveTask(id, {assignee:S.key, claimedAt:Date.now()}); toast(effRole() === 'h' ? 'It\'s yours. The steps are under "Your jobs".' : 'Marked as yours. Helpers can see you\'re doing it.'); break; }
+    case 'release': saveTask(id, {assignee:null, claimedAt:null}); if(effRole() !== 'h') toast('Back on the open helper list.'); break;
     case 'toMM': { const p = clone(plan), t = findTask(p, id); if(!t) break; makeHostTask(p, t); savePlan(p); if(prog(id).assignee) saveTask(id, {assignee:null}); toast(ownerOf(t.r) && ownerOf(t.r) !== S.key ? `Now ${personName(ownerOf(t.r))}'s task (it's their dish).` : 'Now a host-only task.'); break; }
     case 'toHelper': { const p = clone(plan), t0 = findTask(plan, id), t = findTask(p, id); if(!t) break; const hadTools = !t.wasHelper && Object.values(t.uses||{}).some(q => q > 0); makeHelperJob(p, t); savePlan(p); if(prog(id).startedAt) saveTask(id, {startedAt:null}); toast(hadTools ? 'Now a helper job. Helpers can claim it. Pots and burners for helper jobs aren\'t tracked, so keep an eye on the stove.' : 'Now a helper job. Helpers can claim it.'); break; }
     case 'editTask': { const t = findTask(plan, id); if(t){ openRecipeEditor(plan.recipes[t.r] ? t.r : 'general'); if(S.view === 'editRecipe'){ S.openTask = id; render(); } } break; }
